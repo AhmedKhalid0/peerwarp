@@ -34,14 +34,14 @@ Powered by **WebRTC DataChannels (DTLS/SCTP)**, the **Web Streams API**, and **c
 
 ## 📸 Visual Showcase
 
-### 🖥️ Desktop Transfer Workspace (Light Mode Default)
+### 🖥️ Calm & Eye-Comfortable Desktop Workspace (Light Mode)
 ![PeerWarp Desktop Workspace](docs/screenshots/01_desktop_workspace_light.png)
 
-### 🌙 High-Speed Streaming Session (Dark Mode)
-![PeerWarp Streaming Session](docs/screenshots/02_transfer_session_dark.png)
+### 📖 "How It Works" Guide, Cloud Comparison & FAQ (For All Users)
+![PeerWarp How It Works Guide](docs/screenshots/02_how_it_works_guide.png)
 
-### 📱 One-Touch Mobile QR Code Pairing
-![PeerWarp Mobile Pairing](docs/screenshots/03_qr_mobile_pairing.png)
+### 🌙 High-Speed Streaming Session & QR Pairing (Dark Mode)
+![PeerWarp Streaming Session](docs/screenshots/03_transfer_session_dark.png)
 
 ### 📥 One-Click Receiver & Cryptographic Verification
 ![PeerWarp Receiver Verification](docs/screenshots/04_receiver_verified.png)

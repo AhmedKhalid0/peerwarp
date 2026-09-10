@@ -23,7 +23,7 @@ export function PairingModal({ roomId, shareUrl, peerCount }: PairingModalProps)
           width: 170,
           margin: 1,
           color: {
-            dark: "#1e1b4b",
+            dark: "#18181b",
             light: "#ffffff",
           },
         },
@@ -45,32 +45,32 @@ export function PairingModal({ roomId, shareUrl, peerCount }: PairingModalProps)
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 sm:p-8 shadow-sm">
+    <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 sm:p-8 shadow-xs">
       <div className="flex flex-col md:flex-row items-center justify-between gap-8">
         {/* Left: Code & Instructions */}
         <div className="flex-1 space-y-5 text-center md:text-left">
           <div className="space-y-1">
             <div className="flex items-center justify-center md:justify-start gap-2">
-              <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                {peerCount === 1 ? "Waiting for recipient to connect..." : "Recipient Connected"}
+              <span className={`flex h-2 w-2 rounded-full ${peerCount > 1 ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`} />
+              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+                {peerCount === 1 ? "Waiting for recipient to connect..." : "Recipient Connected & Ready"}
               </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-zinc-100">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
               Pair your devices
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400">
-              Open this link or scan the QR code on the receiving phone, tablet, or laptop.
+            <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+              Scan this QR code with your phone camera, or send the direct link to anyone.
             </p>
           </div>
 
           {/* 6-Character Room Code Display */}
           <div className="inline-flex flex-col items-center md:items-start space-y-1.5">
-            <span className="text-[11px] font-medium text-slate-400 dark:text-zinc-500 uppercase tracking-wider">
+            <span className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
               One-Time Room Code
             </span>
-            <div className="px-6 py-3 rounded-xl bg-slate-100 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700">
-              <span className="font-mono text-2xl sm:text-3xl font-extrabold tracking-widest text-indigo-600 dark:text-indigo-400">
+            <div className="px-6 py-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+              <span className="font-mono text-2xl sm:text-3xl font-extrabold tracking-widest text-zinc-900 dark:text-zinc-100">
                 {roomId}
               </span>
             </div>
@@ -82,15 +82,15 @@ export function PairingModal({ roomId, shareUrl, peerCount }: PairingModalProps)
               type="text"
               readOnly
               value={shareUrl}
-              className="flex-1 text-xs px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-mono select-all focus:outline-none"
+              className="flex-1 text-xs px-3.5 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono select-all focus:outline-none"
             />
             <button
               onClick={handleCopyLink}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs shadow-xs transition-colors shrink-0"
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 font-medium text-xs shadow-xs transition-colors shrink-0"
             >
               {copied ? (
                 <>
-                  <Check className="w-4 h-4 text-emerald-300" />
+                  <Check className="w-4 h-4 text-emerald-400" />
                   <span>Copied!</span>
                 </>
               ) : (
@@ -102,25 +102,25 @@ export function PairingModal({ roomId, shareUrl, peerCount }: PairingModalProps)
             </button>
           </div>
 
-          <div className="flex items-center justify-center md:justify-start gap-4 text-[11px] text-slate-400 dark:text-zinc-500 pt-1">
+          <div className="flex items-center justify-center md:justify-start gap-4 text-[11px] text-zinc-500 dark:text-zinc-400 pt-1">
             <span className="flex items-center gap-1">
               <Smartphone className="w-3.5 h-3.5" />
-              Works on iOS & Android
+              iPhone, Android, Mac & Windows
             </span>
             <span>•</span>
             <span className="flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-              Zero Storage Logs
+              <ShieldCheck className="w-3.5 h-3.5" />
+              Zero Cloud Storage
             </span>
           </div>
         </div>
 
         {/* Right: QR Code Box */}
-        <div className="flex flex-col items-center justify-center p-5 rounded-2xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200/80 dark:border-zinc-700/80 shadow-xs shrink-0">
-          <div className="p-2 bg-white rounded-xl shadow-xs">
+        <div className="flex flex-col items-center justify-center p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-700/80 shadow-xs shrink-0">
+          <div className="p-2 bg-white rounded-xl shadow-xs border border-zinc-100">
             <canvas ref={canvasRef} className="rounded-lg" />
           </div>
-          <p className="mt-2.5 text-[11px] font-medium text-slate-500 dark:text-zinc-400 flex items-center gap-1">
+          <p className="mt-2.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
             <QrCode className="w-3.5 h-3.5" />
             Scan to receive on phone
           </p>

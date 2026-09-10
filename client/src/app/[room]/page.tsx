@@ -197,22 +197,22 @@ export default function RoomPage({ params }: RoomPageProps) {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-14 space-y-8">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-14 space-y-8 text-zinc-900 dark:text-zinc-100">
       {/* Top Breadcrumb */}
       <div className="flex items-center justify-between">
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to PeerWarp</span>
         </Link>
 
         <div className="flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 dark:text-zinc-500">
+          <span className="text-[11px] uppercase tracking-wider font-semibold text-zinc-400 dark:text-zinc-500">
             Room Code
           </span>
-          <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-md bg-indigo-50 dark:bg-zinc-800 text-indigo-700 dark:text-indigo-400 border border-indigo-100 dark:border-zinc-700">
+          <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700">
             {roomId}
           </span>
         </div>
@@ -222,14 +222,14 @@ export default function RoomPage({ params }: RoomPageProps) {
       <div className="space-y-6">
         {/* Connecting Spinner */}
         {connectionStatus === "connecting" && (
-          <div className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-12 text-center space-y-4">
-            <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mx-auto" />
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-12 text-center space-y-4 shadow-xs">
+            <Loader2 className="w-9 h-9 text-zinc-500 dark:text-zinc-400 animate-spin mx-auto" />
             <div className="space-y-1">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-zinc-100">
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
                 Connecting to Room {roomId}...
               </h3>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400">
-                Negotiating encrypted WebRTC P2P direct handshake.
+              <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+                Establishing direct encrypted peer-to-peer bridge. Please keep this tab open.
               </p>
             </div>
           </div>
@@ -237,16 +237,16 @@ export default function RoomPage({ params }: RoomPageProps) {
 
         {/* Connected - Waiting for sender to stream */}
         {connectionStatus === "connected" && !activeItem && (
-          <div className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-12 text-center space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
-              <ShieldCheck className="w-6 h-6" />
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-12 text-center space-y-4 shadow-xs">
+            <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center mx-auto">
+              <ShieldCheck className="w-6 h-6 text-zinc-600 dark:text-zinc-400" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-zinc-100">
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
                 Connected Directly to Sender
               </h3>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400">
-                Waiting for the sender to stream files. Keep this window open.
+              <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+                Both devices are paired! Waiting for the sender to stream files.
               </p>
             </div>
           </div>
@@ -263,19 +263,19 @@ export default function RoomPage({ params }: RoomPageProps) {
 
         {/* Error State */}
         {connectionStatus === "error" && (
-          <div className="rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/50 dark:bg-rose-950/20 p-8 text-center space-y-4">
-            <AlertCircle className="w-10 h-10 text-rose-600 dark:text-rose-400 mx-auto" />
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 text-center space-y-4 shadow-xs">
+            <AlertCircle className="w-9 h-9 text-zinc-500 dark:text-zinc-400 mx-auto" />
             <div className="space-y-1">
-              <h3 className="text-base font-bold text-rose-900 dark:text-rose-100">
-                Connection Notice
+              <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                Session Notice
               </h3>
-              <p className="text-xs sm:text-sm text-rose-600 dark:text-rose-400 max-w-md mx-auto">
+              <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 max-w-md mx-auto">
                 {errorMessage || "Unable to establish direct peer connection."}
               </p>
             </div>
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-semibold shadow-xs"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-xs font-semibold shadow-xs transition-colors"
             >
               <span>Return Home</span>
             </Link>
@@ -287,9 +287,9 @@ export default function RoomPage({ params }: RoomPageProps) {
       <AdSlot slotId="peerwarp_receiver_bottom" />
 
       {/* Security note */}
-      <div className="flex items-center justify-center gap-2 text-xs text-slate-400 dark:text-zinc-500 text-center">
-        <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-        <span>Transferred data is end-to-end encrypted and never stored on any server.</span>
+      <div className="flex items-center justify-center gap-2 text-xs text-zinc-400 dark:text-zinc-500 text-center">
+        <ShieldCheck className="w-4 h-4 text-zinc-400 dark:text-zinc-500 shrink-0" />
+        <span>Transferred data flows directly device-to-device and is never stored on any server.</span>
       </div>
     </div>
   );
