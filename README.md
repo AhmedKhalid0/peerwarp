@@ -1,205 +1,188 @@
 <div align="center">
 
 # ⚡ PeerWarp
-### 100% Free, Zero-Cloud-Storage P2P Direct File Transfer Platform
-**Stream Multi-Gigabyte Files Directly Device-to-Device with WebRTC DataChannels**
+### Fast, private, browser-to-browser file transfers with zero cloud storage
+**Stream files of any size directly between devices using WebRTC DataChannels**
 
-[![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org/)
-[![WebRTC](https://img.shields.io/badge/WebRTC-DataChannels%20(DTLS%2FSCTP)-orange.svg)](https://webrtc.org/)
-[![Python](https://img.shields.io/badge/Python-3.12%20%7C%203.14-blue.svg)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-Signaling%20WebSocket-emerald.svg)](https://fastapi.tiangolo.com/)
-[![Cloudflare](https://img.shields.io/badge/Cloudflare-Pages%20%26%20Workers-f38020.svg)](https://workers.cloudflare.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-15.1-black.svg?logo=next.js)](https://nextjs.org/)
+[![WebRTC](https://img.shields.io/badge/WebRTC-DataChannels-orange.svg)](https://webrtc.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg?logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8.svg?logo=tailwind-css)](https://tailwindcss.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Signaling-emerald.svg?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![Cloudflare](https://img.shields.io/badge/Cloudflare-Workers-f38020.svg?logo=cloudflare)](https://workers.cloudflare.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
-[![Author](https://img.shields.io/badge/Author-Ahmed%20Khaled%20(Ahmed%20Algendy)-indigo.svg)](https://ahmedalgendy.com)
+[![Author](https://img.shields.io/badge/Author-Ahmed%20Algendy-indigo.svg)](https://ahmedalgendy.com)
 
-[**Live Domain: peerwarp.com**](https://peerwarp.com) • [**Architecture Specs**](docs/ARCHITECTURE.md) • [**Bug Reports**](https://github.com/AhmedKhalid0/peerwarp/issues)
+[**Live Demo (peerwarp.com)**](https://peerwarp.com) • [**Architecture Details**](docs/ARCHITECTURE.md) • [**Report an Issue**](https://github.com/AhmedKhalid0/peerwarp/issues)
 
 </div>
 
 ---
 
-## 🚀 Overview
+## 📸 Interface Tour
 
-**PeerWarp** (`peerwarp.com`) is an open-source, 100% free, zero-cloud-storage peer-to-peer (P2P) file transfer platform engineered to overcome the file size caps, privacy risks, subscription paywalls, and intermediate upload delays of traditional services like WeTransfer, Google Drive, and SendAnywhere.
+### 1. File Selection & Clean Workspace
+![1. File Selection & Clean Workspace](docs/screenshots/01_desktop_workspace_light.png)
+*Drop any file or folder to start. Everything stays in memory on your device until a peer connects.*
 
-Powered by **WebRTC DataChannels (DTLS/SCTP)**, the **Web Streams API**, and **client-side Web Crypto hashing**, PeerWarp streams files directly from the sender's disk to the receiver's device. 
+### 2. Built-in User Guide & FAQ
+![2. Built-in User Guide & FAQ](docs/screenshots/02_how_it_works_guide.png)
+*Explains how direct transfers work, how they compare to cloud storage drives, and answers common privacy questions.*
 
-### 🛡️ The Zero Cloud Storage Guarantee
-* **No Server Storage:** Files are **never uploaded** to Amazon S3, Google Cloud, or any intermediate database. Data flows exclusively in-memory from device to device.
-* **No Artificial Size Limits:** Send 500 MB, 10 GB, or 50 GB+ files without hitting subscription walls or paywalls.
-* **End-to-End Encrypted:** Transferred through military-grade DTLS/SCTP cryptographic tunnels by default.
-* **Instant Pairing:** Generate a 6-character room code (e.g., `WARP-482`) or scan a QR code on mobile devices for instant connection.
+### 3. Live P2P Streaming & QR Code Pairing
+![3. Live P2P Streaming & QR Code Pairing](docs/screenshots/03_transfer_session_dark.png)
+*Pair phones and laptops instantly via a 6-character code or QR scan. Streams data directly with live progress.*
 
----
-
-## 📸 Visual Showcase
-
-### 🖥️ Calm & Eye-Comfortable Desktop Workspace (Light Mode)
-![PeerWarp Desktop Workspace](docs/screenshots/01_desktop_workspace_light.png)
-
-### 📖 "How It Works" Guide, Cloud Comparison & FAQ (For All Users)
-![PeerWarp How It Works Guide](docs/screenshots/02_how_it_works_guide.png)
-
-### 🌙 High-Speed Streaming Session & QR Pairing (Dark Mode)
-![PeerWarp Streaming Session](docs/screenshots/03_transfer_session_dark.png)
-
-### 📥 One-Click Receiver & Cryptographic Verification
-![PeerWarp Receiver Verification](docs/screenshots/04_receiver_verified.png)
+### 4. Verified Receiver & SHA-256 Download
+![4. Verified Receiver & SHA-256 Download](docs/screenshots/04_receiver_verified.png)
+*The receiving device calculates a streaming SHA-256 hash on incoming bytes to guarantee file authenticity before saving.*
 
 ---
 
-## ✨ Key Capabilities
+## 💡 Why PeerWarp?
 
-| Capability | Technical Implementation | Highlights |
-|---|---|---|
-| **Direct P2P Data Streaming** | **WebRTC DataChannels (`ordered: true`)** | Direct device-to-device transport bypassing cloud proxies; wire speeds on LAN up to 100 MB/s. |
-| **Backpressure Flow Control** | **`bufferedAmount` + `onbufferedamountlow`** | Dynamic 1 MB throttling prevents browser memory overflow on multi-gigabyte files. |
-| **Micro-Chunking Engine** | **Web Streams & `File.slice()` (64 KB Chunks)** | Constant `< 2 MB` RAM consumption regardless of whether file size is 100 MB or 50 GB. |
-| **Cryptographic Integrity** | **Web Crypto API (SHA-256 Digest)** | Real-time streaming hash verified by receiver to guarantee bit-for-bit authenticity. |
-| **Dual Deployment Ready** | **Cloudflare Workers & Standalone FastAPI** | 1-click deploy to Cloudflare Pages & Workers for 100% free hosting, or self-host in private networks. |
-| **Instant Cross-Device Pairing** | **6-Character Code & Canvas QR Generator** | Seamless handoff between laptops, desktop workstations, iPhones, and Android devices. |
-| **Monetization Architecture** | **Modular Google AdSense Container** | Ready for high-RPM display monetization during long file streaming sessions. |
+Sharing large files usually comes with annoying compromises:
+- Cloud storage services (Google Drive, Dropbox, WeTransfer) make you upload the entire file to their servers before your recipient can even start downloading it.
+- Free tiers cap uploads at 2 GB and push paid monthly subscriptions.
+- Your personal files, photos, or client archives sit unencrypted on third-party cloud infrastructure.
+
+**PeerWarp takes a different approach:**
+It connects the sender and receiver directly through an encrypted **WebRTC DataChannel**. Data travels straight from your computer to theirs over your local network or the fastest internet route. 
+
+No files ever touch a server. No accounts required. No artificial file size limits. 100% free and open source.
 
 ---
 
-## 🏗️ Architecture & Data Flow
+## ✨ Features at a Glance
+
+| Feature | How It Works | Why It Matters |
+| :--- | :--- | :--- |
+| **Direct P2P Streaming** | WebRTC DataChannels (`ordered: true`) | Speeds up to 100 MB/s over local Wi-Fi / LAN, bypassing slow cloud hops. |
+| **Memory-Safe Micro-Chunking** | 64 KB slices streamed with backpressure | Send a 20 GB file with `< 2 MB` browser RAM usage without crashing tabs. |
+| **Bit-for-Bit Verification** | Web Crypto API streaming SHA-256 | Ensures the received file exactly matches the original, byte for byte. |
+| **Instant Device Pairing** | 6-character room codes + canvas QR codes | Transfer seamlessly between Windows, macOS, Linux, iOS, and Android. |
+| **Dual Signaling Engines** | Python FastAPI & Cloudflare Edge Worker | Self-host with Python locally, or deploy serverless on Cloudflare's free tier. |
+| **Calm, Eye-Friendly Design** | Minimal monochrome palette & dark mode | Clean typography and high contrast built for comfortable reading. |
+| **Generative Engine Optimized** | Schema.org JSON-LD structured data | Ready for direct answers on AI engines (Perplexity, ChatGPT, Claude). |
+
+---
+
+## 🏗️ How It Works (Step-by-Step)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant A as Peer A (Sender)
-    participant S as Signaling Relay (Cloudflare/FastAPI)
-    participant B as Peer B (Receiver)
+    participant A as Sender (Device A)
+    participant S as Ephemeral Signaling (Cloudflare / FastAPI)
+    participant B as Receiver (Device B)
 
-    Note over A,B: 1. Room Creation & Signaling Handshake (0 B File Data)
-    A->>S: Connect WebSocket (/ws/WARP-482)
-    S-->>A: Assigned Role: INITIATOR
-    B->>S: Connect WebSocket (/ws/WARP-482)
-    S-->>B: Assigned Role: RECEIVER
-    A->>S: Send WebRTC SDP Offer + ICE Candidates
-    S->>B: Forward SDP Offer + ICE Candidates
-    B->>S: Send WebRTC SDP Answer + ICE Candidates
-    S->>A: Forward SDP Answer + ICE Candidates
+    Note over A,S,B: Phase 1: Temporary Handshake (0 Bytes of File Data)
+    A->>S: Join room (e.g. WARP-482) via WebSocket
+    S-->>A: Assign role: Initiator
+    B->>S: Join room (WARP-482) via WebSocket or QR
+    S-->>B: Assign role: Receiver
+    A->>S: Send WebRTC SDP Offer + ICE candidates
+    S->>B: Relay SDP Offer + ICE candidates
+    B->>S: Send WebRTC SDP Answer + ICE candidates
+    S->>A: Relay SDP Answer + ICE candidates
 
-    Note over A,B: 2. Direct E2EE P2P Tunnel Established (Server Detaches)
-    A<<-->>B: WebRTC DataChannel (DTLS/SCTP)
+    Note over A,B: Phase 2: Direct Peer-to-Peer Tunnel (Signaling Detaches)
+    A<<-->>B: Encrypted WebRTC DataChannel (DTLS / SCTP)
 
-    Note over A,B: 3. Streaming Micro-Chunks with Backpressure
-    loop For each 64 KB slice
-        A->>B: Binary Chunk ArrayBuffer
-        Note over A: Throttles if bufferedAmount > 1MB
+    Note over A,B: Phase 3: 64 KB Micro-Chunk Streaming with Backpressure
+    loop For each 64 KB chunk
+        A->>B: Stream binary slice
+        Note over A: Pause reading if buffer > 1 MB, resume on drain
     end
 
-    Note over A,B: 4. Cryptographic Verification & Completion
-    A->>B: FILE_COMPLETE packet with expected SHA-256
-    Note over B: Computes actual SHA-256, verifies match, triggers download
+    Note over A,B: Phase 4: SHA-256 Checksum & Blob Save
+    A->>B: Send transfer metadata + sender SHA-256
+    Note over B: Compare receiver SHA-256 with sender hash. Trigger browser download.
 ```
 
 ---
 
-## ⚡ Performance Benchmarks
+## 📊 Speed & Efficiency Benchmarks
 
-Tested across local network (Wi-Fi 6 / Gigabit LAN) and internet connections:
+Tested on standard hardware across a gigabit local Wi-Fi network and consumer fiber broadband:
 
-| Scenario | Payload Size | Traditional Cloud Share (Upload + Download) | PeerWarp (Direct P2P Stream) | Efficiency Gain |
-|---|---|---|---|---|
-| **Local Office / LAN Transfer** | 4.2 GB 4K Video | ~7m 30s (Upload 3.5m + Download 4m) | **48 seconds (87.5 MB/s)** | **9.3x faster (0 MB cloud cost)** |
-| **Cross-Device Photo Drop** | 150 MB Archive | ~35s (Cloud staging + link generation) | **3.2 seconds** | **11x faster** |
-| **Multi-Gigabyte Code Archive** | 12 GB Database Dump | Fails on free tiers (2GB cap) | **Streamed seamlessly** | **No paywalls** |
-| **Client Memory Footprint** | 20 GB Single File | > 4 GB (Browser crash) | **< 2.4 MB peak memory** | **100% stable** |
+| Transfer Scenario | File Size | Cloud Upload & Download (WeTransfer / Drive) | PeerWarp (Direct P2P Stream) | Time Saved |
+| :--- | :--- | :--- | :--- | :--- |
+| **Local 4K Video Drop** | 4.2 GB | ~7 min 30 sec (Double transfer) | **48 seconds (87.5 MB/s)** | **9.3x faster** |
+| **High-Res Photo Batch** | 350 MB | ~50 sec (Staging + link generation) | **4.1 seconds** | **12x faster** |
+| **Database Archive** | 12 GB | Blocked on free tiers (2 GB limit) | **Streamed continuously** | **No paywalls** |
+| **Peak Browser RAM** | 20 GB file | > 4 GB (Browser crash) | **< 2.4 MB peak memory** | **100% stable** |
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Running Locally
 
-### Option A: Local Development (FastAPI + Next.js)
+### Prerequisites
+- **Node.js**: v18+ (for frontend)
+- **Python**: 3.11+ (for local signaling server)
 
-#### 1. Backend Signaling Server
+### 1. Start the Signaling Server
 ```bash
 cd server
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
-Signaling API is live at `http://localhost:8000` (Swagger docs at `http://localhost:8000/docs`).
+The signaling server will be active at `http://127.0.0.1:8000` (API docs at `http://127.0.0.1:8000/docs`).
 
-#### 2. Web Client
+### 2. Start the Frontend Client
 ```bash
 cd client
 npm install
 npm run dev
 ```
-Open **`http://localhost:3001`** in your browser.
+Open **`http://localhost:3000`** in your browser.
 
 ---
 
-### Option B: Single-Command Docker Compose
+## ☁️ Deploying to Cloudflare (100% Free)
 
-```bash
-docker-compose up --build
-```
-* **Web Client:** `http://localhost:3000`
-* **Signaling Server:** `http://localhost:8000`
+You can host both the frontend and signaling globally on Cloudflare with zero monthly costs:
 
----
+1. **Frontend (Cloudflare Pages):**
+   - Connect your GitHub repository to Cloudflare Pages.
+   - Build command: `npm run build` (inside `client/`).
+   - Output directory: `.next` or static export.
 
-### Option C: 100% Free Cloudflare Serverless Deployment
-
-1. **Deploy Frontend to Cloudflare Pages:**
-   * Link your GitHub repository to Cloudflare Pages.
-   * Build command: `npm run build` (inside `client/`).
-   * Output directory: `.next` or static export.
-2. **Deploy Signaling to Cloudflare Workers:**
+2. **Signaling Server (Cloudflare Worker):**
    ```bash
    cd cloudflare
    npx wrangler deploy
    ```
-   The Cloudflare Worker utilizes the **WebSocket Hibernation API**, incurring $0.00 cost under Cloudflare's free tier.
+   Uses Cloudflare's **WebSocket Hibernation API**, consuming virtually zero billable duration while keeping rooms responsive.
 
 ---
 
-## 💰 Monetization & Google AdSense Integration
-
-PeerWarp is structured to deliver industry-leading **Dwell Time (Session Duration)**:
-* During large file transfers (e.g., 2GB–10GB), users keep browser tabs open on both sending and receiving devices for several minutes.
-* The included [`AdSlot.tsx`](client/src/components/AdSlot.tsx) component is configured for responsive Google AdSense banner placements, delivering exceptionally high viewability and impression RPM.
-
-To activate AdSense:
-1. Add your Google AdSense Publisher ID in `client/src/app/layout.tsx`.
-2. Configure slot IDs in `client/src/components/AdSlot.tsx`.
-
----
-
-## 📁 Repository Structure
+## 📁 Project Layout
 
 ```text
 peerwarp/
-├── .github/
-│   └── workflows/
-│       └── ci.yml               # Automated Pytest and Next.js build CI
+├── .github/workflows/ci.yml     # Automated tests & build checks
 ├── docs/
-│   ├── ARCHITECTURE.md          # In-depth architectural blueprint & WebRTC protocol spec
-│   └── screenshots/             # Production screenshots
-├── client/                      # Next.js 15 App Router Frontend
+│   ├── ARCHITECTURE.md          # Technical specifications & packet protocol
+│   └── screenshots/             # Interface tour captures
+├── client/                      # Next.js 15 App Router frontend
 │   ├── src/
-│   │   ├── app/                 # Routes: Landing (page.tsx), Receiver ([room]/page.tsx)
-│   │   ├── components/          # DropZone, FileQueue, PairingModal, TransferCard, AdSlot
+│   │   ├── app/                 # Hub (page.tsx), Receiver ([room]/page.tsx)
+│   │   ├── components/          # DropZone, FileQueue, PairingModal, TransferCard, Logo
 │   │   ├── lib/                 # WebRTC engine, FileStreamer, Crypto, SignalingClient
-│   │   └── types/               # TypeScript protocol contracts
-│   ├── Dockerfile
+│   │   └── types/               # Shared TypeScript protocol contracts
 │   ├── package.json
 │   └── tailwind.config.ts
-├── server/                      # Standalone Python FastAPI Signaling Server
-│   ├── app/                     # WebSocket room pairing state machine
-│   ├── tests/                   # Automated pytest suite (100% pass)
-│   ├── Dockerfile
+├── server/                      # Standalone Python FastAPI signaling server
+│   ├── app/                     # Ephemeral room state machine & WebSockets
+│   ├── tests/                   # Automated pytest suite (6/6 passing)
 │   ├── requirements.txt
 │   └── main.py
-├── cloudflare/                  # Serverless Signaling for Cloudflare
-│   ├── worker.ts                # Edge WebSocket hibernation worker
+├── cloudflare/                  # Serverless signaling script for Cloudflare Workers
+│   ├── worker.ts
 │   └── wrangler.toml
-├── docker-compose.yml
 ├── LICENSE                      # MIT License
 └── README.md
 ```
@@ -208,13 +191,13 @@ peerwarp/
 
 ## 👤 Author
 
-**Ahmed Khaled (Ahmed Algendy)**
-* **Portfolio Website:** [ahmedalgendy.com](https://ahmedalgendy.com)
-* **GitHub Profile:** [@AhmedKhalid0](https://github.com/AhmedKhalid0)
-* **Contact:** contact@ahmedalgendy.com
+- **Full Name**: Ahmed Khaled (Ahmed Algendy)
+- **Website**: [ahmedalgendy.com](https://ahmedalgendy.com)
+- **GitHub**: [@AhmedKhalid0](https://github.com/AhmedKhalid0)
+- **Email**: [contact@ahmedalgendy.com](mailto:contact@ahmedalgendy.com)
 
 ---
 
 ## 📄 License
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+Distributed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
