@@ -23,9 +23,8 @@ flowchart TB
 
     subgraph SIGNALING ["Signaling Relay (Metadata Only - 0 B File Storage)"]
         direction TB
-        CF["Cloudflare Worker (WebSocket Hibernation API)"]
         FastAPI["FastAPI Python WebSocket Server (Local/Docker)"]
-        STUN["Public STUN Servers (Cloudflare & Google)"]
+        STUN["Public STUN Servers (Google)"]
     end
 
     subgraph RECEIVER ["Peer B (Receiver - Web Browser)"]
@@ -39,10 +38,8 @@ flowchart TB
         Reassembler_B --> UI_B
     end
 
-    PC_A <-->|"1. Exchange SDP Offer/Answer & ICE"| CF
-    PC_B <-->|"1. Exchange SDP Offer/Answer & ICE"| CF
-    PC_A <-->|"1. (Alt) Local WS Signaling"| FastAPI
-    PC_B <-->|"1. (Alt) Local WS Signaling"| FastAPI
+    PC_A <-->|"1. Local WebSocket Handshake"| FastAPI
+    PC_B <-->|"1. Local WebSocket Handshake"| FastAPI
     PC_A -.->|"STUN NAT Discovery"| STUN
     PC_B -.->|"STUN NAT Discovery"| STUN
 
@@ -97,7 +94,8 @@ sequenceDiagram
     Server->>Sender: Forward Candidate
 
     Note over Sender,Receiver: Phase 3: Direct P2P Tunnel Established (Server Detaches)
-    Sender<<-->>Receiver: Direct WebRTC DataChannel (DTLS/SCTP)
+    Sender->>Receiver: Establish Direct WebRTC DataChannel (DTLS/SCTP)
+    Receiver-->>Sender: DataChannel Connected & Ready
 ```
 
 ---
@@ -139,13 +137,11 @@ PeerWarp integrates client-side Web Crypto hashing (`window.crypto.subtle`) into
 
 ## 5. Dual Deployment Topologies
 
-### Topology A: Serverless on Cloudflare (100% Free Hosting)
-* **Frontend:** Deployed to **Cloudflare Pages** globally across 300+ edge locations.
-* **Signaling:** Handled by a **Cloudflare Worker** using the WebSocket Hibernation API. Cloudflare automatically sleeps inactive workers, providing essentially zero cost for high concurrency.
-* **NAT Traversal:** Public STUN endpoint at `stun:stun.cloudflare.com:3478`.
-* **Bandwidth Cost:** **$0.00** forever (zero files pass through Cloudflare).
+### Topology A: Local Network / Air-Gapped Deployment
+* **Backend:** Standalone Python FastAPI WebSocket daemon running locally on your workstation or server (`uvicorn app.main:app`).
+* **Frontend:** Next.js application running on the local network (`npm run dev` or `npm run build && npm run start`).
+* **Security:** Operates completely offline within local home or corporate Wi-Fi/LAN networks without external internet access or cloud dependencies.
 
-### Topology B: Air-Gapped / Private Enterprise Networks
-* **Backend:** Standalone Python FastAPI WebSocket daemon running in Docker.
-* **Frontend:** Standalone Next.js Node container.
-* **Security:** Operates completely offline within local corporate networks without external internet access.
+### Topology B: Containerized Docker Deployment
+* **Single Command:** `docker-compose up --build` launches both the FastAPI signaling engine and the Next.js frontend in isolated containers.
+* **Direct Transfer:** Peers transfer directly at wire speeds with zero intermediate cloud proxies.

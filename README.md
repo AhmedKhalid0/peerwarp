@@ -9,7 +9,6 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg?logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8.svg?logo=tailwind-css)](https://tailwindcss.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Signaling-emerald.svg?logo=fastapi)](https://fastapi.tiangolo.com/)
-[![Cloudflare](https://img.shields.io/badge/Cloudflare-Workers-f38020.svg?logo=cloudflare)](https://workers.cloudflare.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 [![Author](https://img.shields.io/badge/Author-Ahmed%20Algendy-indigo.svg)](https://ahmedalgendy.com)
 
@@ -61,7 +60,7 @@ No files ever touch a server. No accounts required. No artificial file size limi
 | **Memory-Safe Micro-Chunking** | 64 KB slices streamed with backpressure | Send a 20 GB file with `< 2 MB` browser RAM usage without crashing tabs. |
 | **Bit-for-Bit Verification** | Web Crypto API streaming SHA-256 | Ensures the received file exactly matches the original, byte for byte. |
 | **Instant Device Pairing** | 6-character room codes + canvas QR codes | Transfer seamlessly between Windows, macOS, Linux, iOS, and Android. |
-| **Dual Signaling Engines** | Python FastAPI & Cloudflare Edge Worker | Self-host with Python locally, or deploy serverless on Cloudflare's free tier. |
+| **Local FastAPI Signaling** | Python FastAPI WebSocket state machine | Lightweight in-memory room coordination; zero file data ever touches the server. |
 | **Calm, Eye-Friendly Design** | Minimal monochrome palette & dark mode | Clean typography and high contrast built for comfortable reading. |
 | **Generative Engine Optimized** | Schema.org JSON-LD structured data | Ready for direct answers on AI engines (Perplexity, ChatGPT, Claude). |
 
@@ -73,7 +72,7 @@ No files ever touch a server. No accounts required. No artificial file size limi
 sequenceDiagram
     autonumber
     participant A as Sender (Device A)
-    participant S as Ephemeral Signaling (Cloudflare / FastAPI)
+    participant S as Signaling Relay (FastAPI WebSocket)
     participant B as Receiver (Device B)
 
     Note over A,S,B: Phase 1: Temporary Handshake (0 Bytes of File Data)
@@ -87,7 +86,8 @@ sequenceDiagram
     S->>A: Relay SDP Answer + ICE candidates
 
     Note over A,B: Phase 2: Direct Peer-to-Peer Tunnel (Signaling Detaches)
-    A<<-->>B: Encrypted WebRTC DataChannel (DTLS / SCTP)
+    A->>B: Establish WebRTC DataChannel (DTLS / SCTP)
+    B-->>A: DataChannel Ready & Acknowledged
 
     Note over A,B: Phase 3: 64 KB Micro-Chunk Streaming with Backpressure
     loop For each 64 KB chunk
@@ -117,11 +117,13 @@ Tested on standard hardware across a gigabit local Wi-Fi network and consumer fi
 
 ## 🚀 Running Locally
 
+PeerWarp consists of a lightweight Python signaling server (for exchanging WebRTC handshake metadata) and a Next.js web client.
+
 ### Prerequisites
 - **Node.js**: v18+ (for frontend)
 - **Python**: 3.11+ (for local signaling server)
 
-### 1. Start the Signaling Server
+### 1. Start the Local Signaling Server
 ```bash
 cd server
 python -m venv .venv
@@ -129,7 +131,7 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
-The signaling server will be active at `http://127.0.0.1:8000` (API docs at `http://127.0.0.1:8000/docs`).
+The signaling server is now active at `http://127.0.0.1:8000` (API docs at `http://127.0.0.1:8000/docs`).
 
 ### 2. Start the Frontend Client
 ```bash
@@ -141,21 +143,15 @@ Open **`http://localhost:3000`** in your browser.
 
 ---
 
-## ☁️ Deploying to Cloudflare (100% Free)
+### Single-Command Docker Setup (Alternative)
 
-You can host both the frontend and signaling globally on Cloudflare with zero monthly costs:
+If you prefer running everything in containers:
 
-1. **Frontend (Cloudflare Pages):**
-   - Connect your GitHub repository to Cloudflare Pages.
-   - Build command: `npm run build` (inside `client/`).
-   - Output directory: `.next` or static export.
-
-2. **Signaling Server (Cloudflare Worker):**
-   ```bash
-   cd cloudflare
-   npx wrangler deploy
-   ```
-   Uses Cloudflare's **WebSocket Hibernation API**, consuming virtually zero billable duration while keeping rooms responsive.
+```bash
+docker-compose up --build
+```
+- **Web Client:** `http://localhost:3000`
+- **Signaling API:** `http://localhost:8000`
 
 ---
 
@@ -180,9 +176,7 @@ peerwarp/
 │   ├── tests/                   # Automated pytest suite (6/6 passing)
 │   ├── requirements.txt
 │   └── main.py
-├── cloudflare/                  # Serverless signaling script for Cloudflare Workers
-│   ├── worker.ts
-│   └── wrangler.toml
+├── docker-compose.yml
 ├── LICENSE                      # MIT License
 └── README.md
 ```
