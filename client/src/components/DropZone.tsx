@@ -49,8 +49,8 @@ export function DropZone({ onFilesSelected, disabled = false }: DropZoneProps) {
       onClick={() => !disabled && fileInputRef.current?.click()}
       className={`relative group cursor-pointer rounded-2xl border-2 border-dashed p-8 sm:p-12 text-center transition-all duration-200 ${
         isDragOver
-          ? "border-zinc-900 dark:border-zinc-100 bg-zinc-100/60 dark:bg-zinc-800/40 scale-[1.01]"
-          : "border-zinc-300 dark:border-zinc-700/80 hover:border-zinc-400 dark:hover:border-zinc-600 bg-zinc-50/70 dark:bg-zinc-900/40 hover:bg-zinc-50 dark:hover:bg-zinc-900/60"
+          ? "border-black dark:border-white bg-neutral-100/60 dark:bg-neutral-800/40 scale-[1.01]"
+          : "border-neutral-300 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-600 bg-neutral-50/70 dark:bg-neutral-900/40 hover:bg-neutral-50 dark:hover:bg-neutral-900/60"
       } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
     >
       <input
@@ -63,31 +63,31 @@ export function DropZone({ onFilesSelected, disabled = false }: DropZoneProps) {
       />
 
       <div className="flex flex-col items-center justify-center max-w-md mx-auto space-y-4">
-        <div className="w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+        <div className="w-14 h-14 rounded-2xl bg-neutral-100 dark:bg-neutral-800 text-black dark:text-white border border-neutral-200 dark:border-neutral-700 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
           <UploadCloud className="w-7 h-7" />
         </div>
 
         <div className="space-y-1.5">
-          <h3 className="text-lg sm:text-xl font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
-            Drop files here, or <span className="text-zinc-900 dark:text-zinc-100 font-semibold underline decoration-zinc-400 dark:decoration-zinc-500 underline-offset-4">browse files</span>
+          <h3 className="text-lg sm:text-xl font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight">
+            Drop files here, or <span className="text-black dark:text-white font-semibold underline decoration-neutral-400 underline-offset-4">browse files</span>
           </h3>
-          <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
             Select 4K videos, archives, raw photos, or folders of any size.
           </p>
         </div>
 
         {/* Value badges */}
-        <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 shadow-xs">
-            <Zap className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300" />
+        <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs">
+            <Zap className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
             No Size Limit
           </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 shadow-xs">
-            <HardDrive className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs">
+            <HardDrive className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
             Zero Cloud Storage
           </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 shadow-xs">
-            <Shield className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs">
+            <Shield className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
             Encrypted P2P
           </span>
         </div>

@@ -15,7 +15,6 @@ import {
   HardDrive,
 } from "lucide-react";
 import { TransferCard } from "@/components/TransferCard";
-import { AdSlot } from "@/components/AdSlot";
 import { SignalingClient } from "@/lib/signaling";
 import { WebRTCPeer } from "@/lib/webrtc";
 import { FileStreamReceiver } from "@/lib/streamer";
@@ -275,7 +274,7 @@ export default function RoomPage({ params }: RoomPageProps) {
             </div>
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-xs font-semibold shadow-xs transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-black hover:bg-neutral-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-black text-xs font-semibold shadow-xs transition-colors"
             >
               <span>Return Home</span>
             </Link>
@@ -283,12 +282,9 @@ export default function RoomPage({ params }: RoomPageProps) {
         )}
       </div>
 
-      {/* Google AdSense / Sponsor Slot Container */}
-      <AdSlot slotId="peerwarp_receiver_bottom" />
-
       {/* Security note */}
-      <div className="flex items-center justify-center gap-2 text-xs text-zinc-400 dark:text-zinc-500 text-center">
-        <ShieldCheck className="w-4 h-4 text-zinc-400 dark:text-zinc-500 shrink-0" />
+      <div className="flex items-center justify-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 text-center">
+        <ShieldCheck className="w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0" />
         <span>Transferred data flows directly device-to-device and is never stored on any server.</span>
       </div>
     </div>

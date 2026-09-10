@@ -34,14 +34,14 @@ export function FileQueue({ files, onRemoveFile, onClearAll, disabled = false }:
   const totalBytes = files.reduce((acc, f) => acc + f.size, 0);
 
   return (
-    <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xs overflow-hidden">
+    <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-xs overflow-hidden">
       {/* Header */}
-      <div className="px-5 py-3.5 border-b border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/50">
+      <div className="px-5 py-3.5 border-b border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-900/50">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-xs sm:text-sm text-zinc-900 dark:text-zinc-100">
+          <span className="font-semibold text-xs sm:text-sm text-neutral-900 dark:text-neutral-100">
             Selected Files ({files.length})
           </span>
-          <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
+          <span className="text-xs text-neutral-500 dark:text-neutral-400 font-mono">
             • {formatBytes(totalBytes)} total
           </span>
         </div>
@@ -49,7 +49,7 @@ export function FileQueue({ files, onRemoveFile, onClearAll, disabled = false }:
         {!disabled && (
           <button
             onClick={onClearAll}
-            className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
+            className="flex items-center gap-1 text-xs text-neutral-500 hover:text-black dark:text-neutral-400 dark:hover:text-white transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" />
             Clear
@@ -58,21 +58,21 @@ export function FileQueue({ files, onRemoveFile, onClearAll, disabled = false }:
       </div>
 
       {/* Items List */}
-      <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60 max-h-60 overflow-y-auto">
+      <div className="divide-y divide-neutral-100 dark:divide-neutral-800/60 max-h-60 overflow-y-auto">
         {files.map((file, idx) => (
           <div
             key={`${file.name}-${idx}`}
-            className="px-5 py-3 flex items-center justify-between hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors text-xs sm:text-sm"
+            className="px-5 py-3 flex items-center justify-between hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40 transition-colors text-xs sm:text-sm"
           >
             <div className="flex items-center gap-3 min-w-0 pr-4">
-              <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 shrink-0 border border-zinc-200/60 dark:border-zinc-700/60">
+              <div className="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 shrink-0 border border-neutral-200/60 dark:border-neutral-700/60">
                 {getFileIcon(file.name, file.type)}
               </div>
               <div className="min-w-0">
-                <p className="font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                <p className="font-medium text-neutral-900 dark:text-neutral-100 truncate">
                   {file.name}
                 </p>
-                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 font-mono">
                   {formatBytes(file.size)}
                 </p>
               </div>
@@ -81,7 +81,7 @@ export function FileQueue({ files, onRemoveFile, onClearAll, disabled = false }:
             {!disabled && (
               <button
                 onClick={() => onRemoveFile(idx)}
-                className="p-1 rounded-md text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all shrink-0"
+                className="p-1 rounded-md text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
