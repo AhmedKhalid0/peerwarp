@@ -70,7 +70,7 @@ The signaling server operates exclusively as a matchmaking coordinator. It never
 sequenceDiagram
     autonumber
     participant Sender as Peer A (Sender)
-    participant Server as Signaling Relay (Cloudflare/FastAPI)
+    participant Server as Signaling Relay (FastAPI WebSocket)
     participant Receiver as Peer B (Receiver)
 
     Note over Sender,Receiver: Phase 1: Room Creation & Discovery

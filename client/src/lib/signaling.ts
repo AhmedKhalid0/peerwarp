@@ -1,6 +1,6 @@
 /**
  * Resilient WebSocket Signaling Client.
- * Connects seamlessly to Cloudflare Workers Edge or Standalone FastAPI backend.
+ * Connects directly to Standalone FastAPI backend or local WebSocket server.
  */
 
 import { SignalingEnvelope, PeerRole } from "@/types/protocol";
@@ -105,7 +105,7 @@ export class SignalingClient {
       if (host === "localhost" || host === "127.0.0.1") {
         return `ws://127.0.0.1:8002/ws/${roomId}`;
       }
-      // 3. Production / Cloudflare Edge: use wss on same host
+      // 3. Production / Custom domain: use wss on same host
       const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
       return `${proto}//${window.location.host}/ws/${roomId}`;
     }

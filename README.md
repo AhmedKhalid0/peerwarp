@@ -75,7 +75,7 @@ sequenceDiagram
     participant S as Signaling Relay (FastAPI WebSocket)
     participant B as Receiver (Device B)
 
-    Note over A,S,B: Phase 1: Temporary Handshake (0 Bytes of File Data)
+    Note over A,B: Phase 1: Temporary Handshake (0 Bytes of File Data)
     A->>S: Join room (e.g. WARP-482) via WebSocket
     S-->>A: Assign role: Initiator
     B->>S: Join room (WARP-482) via WebSocket or QR
@@ -92,7 +92,7 @@ sequenceDiagram
     Note over A,B: Phase 3: 64 KB Micro-Chunk Streaming with Backpressure
     loop For each 64 KB chunk
         A->>B: Stream binary slice
-        Note over A: Pause reading if buffer > 1 MB, resume on drain
+        Note over A: Pause reading if buffer exceeds 1 MB, resume on drain
     end
 
     Note over A,B: Phase 4: SHA-256 Checksum & Blob Save
