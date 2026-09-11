@@ -21,15 +21,8 @@ interface RoomClientProps {
 }
 
 export default function RoomClient({ initialRoom }: RoomClientProps) {
-  const [roomId, setRoomId] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      const pathPart = window.location.pathname.replace(/^\/+/, "").split("/")[0];
-      if (pathPart && pathPart.toLowerCase() !== "connect") {
-        return pathPart.toUpperCase().trim();
-      }
-    }
-    return (initialRoom || "").toUpperCase().trim();
-  });
+  const [isMounted, setIsMounted] = useState(false);
+  const [roomId, setRoomId] = useState<string>("");
   const [manualCodeInput, setManualCodeInput] = useState("");
 
   const [connectionStatus, setConnectionStatus] = useState<
@@ -43,19 +36,22 @@ export default function RoomClient({ initialRoom }: RoomClientProps) {
   const receiverStreamerRef = useRef<FileStreamReceiver>(new FileStreamReceiver());
 
   useEffect(() => {
+    setIsMounted(true);
+    let resolved = (initialRoom || "").toUpperCase().trim();
     if (typeof window !== "undefined") {
       const pathPart = window.location.pathname.replace(/^\/+/, "").split("/")[0];
       if (pathPart && pathPart.toLowerCase() !== "connect") {
-        setRoomId(pathPart.toUpperCase().trim());
+        resolved = pathPart.toUpperCase().trim();
       }
     }
-  }, []);
+    setRoomId(resolved);
+  }, [initialRoom]);
 
   useEffect(() => {
-    if (!roomId || roomId === "CONNECT") {
+    if (!isMounted || !roomId || roomId === "CONNECT") {
       return;
     }
-    let isMounted = true;
+    let isActive = true;
 
     async function initReceiver() {
       try {
@@ -63,7 +59,7 @@ export default function RoomClient({ initialRoom }: RoomClientProps) {
 
         // 1. Initialize Signaling
         const signaling = new SignalingClient(roomId, (envelope) => {
-          if (!isMounted) return;
+          if (!isActive) return;
 
           if (envelope.type === "error") {
             setConnectionStatus("error");
@@ -109,7 +105,7 @@ export default function RoomClient({ initialRoom }: RoomClientProps) {
         await peer.initialize();
       } catch (err: any) {
         console.error("Failed to connect receiver:", err);
-        if (isMounted) {
+        if (isActive) {
           setConnectionStatus("error");
           setErrorMessage(err?.message || "Could not connect to signaling server.");
         }
@@ -119,11 +115,11 @@ export default function RoomClient({ initialRoom }: RoomClientProps) {
     initReceiver();
 
     return () => {
-      isMounted = false;
+      isActive = false;
       signalingRef.current?.close();
       peerRef.current?.close();
     };
-  }, [roomId]);
+  }, [isMounted, roomId]);
 
   const setupDataChannelListeners = (channel: RTCDataChannel) => {
     channel.onmessage = async (event) => {
@@ -210,6 +206,33 @@ export default function RoomClient({ initialRoom }: RoomClientProps) {
     a.click();
     document.body.removeChild(a);
   };
+
+  if (!isMounted) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-14 space-y-8 text-zinc-900 dark:text-zinc-100">
+        <div className="flex items-center justify-between">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to PeerWarp</span>
+          </Link>
+        </div>
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-12 text-center space-y-4 shadow-xs">
+          <Loader2 className="w-9 h-9 text-zinc-500 dark:text-zinc-400 animate-spin mx-auto" />
+          <div className="space-y-1">
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+              Initializing PeerWarp Connection...
+            </h3>
+            <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+              Establishing encrypted peer-to-peer bridge. Please keep this tab open.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-14 space-y-8 text-zinc-900 dark:text-zinc-100">

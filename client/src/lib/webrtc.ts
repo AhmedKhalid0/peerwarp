@@ -10,7 +10,9 @@ const RTC_CONFIG: RTCConfiguration = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:stun.services.mozilla.com" },
+    { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun3.l.google.com:19302" },
+    { urls: "stun:stun4.l.google.com:19302" },
   ],
   iceCandidatePoolSize: 10,
 };
@@ -27,6 +29,7 @@ export class WebRTCPeer {
   private signaling: SignalingClient;
   private role: PeerRole;
   private events: WebRTCEvents;
+  private candidateQueue: RTCIceCandidateInit[] = [];
 
   constructor(role: PeerRole, signaling: SignalingClient, events: WebRTCEvents) {
     this.role = role;
@@ -36,9 +39,11 @@ export class WebRTCPeer {
 
   public async initialize(): Promise<void> {
     this.pc = new RTCPeerConnection(RTC_CONFIG);
+    this.candidateQueue = [];
 
     this.pc.onconnectionstatechange = () => {
       if (this.pc) {
+        console.log(`[WebRTC (${this.role})] State change:`, this.pc.connectionState);
         this.events.onConnectionStateChange(this.pc.connectionState);
       }
     };
@@ -60,7 +65,38 @@ export class WebRTCPeer {
       });
       this.setupDataChannel(this.dataChannel);
 
-      // Create and send SDP Offer
+      // Create initial local description
+      try {
+        const offer = await this.pc.createOffer();
+        await this.pc.setLocalDescription(offer);
+        this.signaling.send({
+          type: "offer",
+          payload: { sdp: offer.sdp, type: offer.type },
+        });
+      } catch (err: any) {
+        console.warn("[WebRTC] Initial offer creation deferred until peer joins:", err);
+      }
+    } else {
+      // Receiver waits for incoming DataChannel
+      this.pc.ondatachannel = (event) => {
+        console.log("[WebRTC] Receiver received DataChannel from sender!");
+        this.dataChannel = event.channel;
+        this.setupDataChannel(this.dataChannel);
+      };
+    }
+  }
+
+  public async sendOffer(): Promise<void> {
+    if (!this.pc || this.role !== "initiator") return;
+
+    try {
+      if (!this.dataChannel || this.dataChannel.readyState === "closed") {
+        this.dataChannel = this.pc.createDataChannel("peerwarp_transfer", {
+          ordered: true,
+        });
+        this.setupDataChannel(this.dataChannel);
+      }
+
       const offer = await this.pc.createOffer();
       await this.pc.setLocalDescription(offer);
 
@@ -68,12 +104,10 @@ export class WebRTCPeer {
         type: "offer",
         payload: { sdp: offer.sdp, type: offer.type },
       });
-    } else {
-      // Receiver waits for the incoming DataChannel
-      this.pc.ondatachannel = (event) => {
-        this.dataChannel = event.channel;
-        this.setupDataChannel(this.dataChannel);
-      };
+      console.log("[WebRTC] Dispatched fresh SDP Offer to incoming peer");
+    } catch (err: any) {
+      console.error("[WebRTC] Failed to send offer on peer arrival:", err);
+      this.events.onError(err?.message || "Failed to create WebRTC offer");
     }
   }
 
@@ -81,8 +115,18 @@ export class WebRTCPeer {
     if (!this.pc) return;
 
     try {
+      // When second peer connects, sender triggers/re-sends offer
+      if (envelope.type === "joined" && this.role === "initiator" && envelope.peerCount === 2) {
+        console.log("[WebRTC] Peer 2 joined! Initiating handshake...");
+        await this.sendOffer();
+        return;
+      }
+
       if (envelope.type === "offer" && this.role === "receiver") {
+        console.log("[WebRTC] Receiver handling SDP offer from sender");
         await this.pc.setRemoteDescription(new RTCSessionDescription(envelope.payload));
+        await this.flushQueuedCandidates();
+
         const answer = await this.pc.createAnswer();
         await this.pc.setLocalDescription(answer);
 
@@ -90,10 +134,17 @@ export class WebRTCPeer {
           type: "answer",
           payload: { sdp: answer.sdp, type: answer.type },
         });
+        console.log("[WebRTC] Receiver sent SDP answer back to sender");
       } else if (envelope.type === "answer" && this.role === "initiator") {
+        console.log("[WebRTC] Initiator received SDP answer from receiver");
         await this.pc.setRemoteDescription(new RTCSessionDescription(envelope.payload));
+        await this.flushQueuedCandidates();
       } else if (envelope.type === "ice_candidate" && envelope.payload) {
-        await this.pc.addIceCandidate(new RTCIceCandidate(envelope.payload));
+        if (this.pc.remoteDescription && this.pc.remoteDescription.type) {
+          await this.pc.addIceCandidate(new RTCIceCandidate(envelope.payload));
+        } else {
+          this.candidateQueue.push(envelope.payload);
+        }
       }
     } catch (err: any) {
       console.error("[WebRTC] Error processing signaling message:", err);
@@ -101,10 +152,23 @@ export class WebRTCPeer {
     }
   }
 
+  private async flushQueuedCandidates(): Promise<void> {
+    if (!this.pc) return;
+    while (this.candidateQueue.length > 0) {
+      const cand = this.candidateQueue.shift();
+      if (cand) {
+        try {
+          await this.pc.addIceCandidate(new RTCIceCandidate(cand));
+        } catch (_) {}
+      }
+    }
+  }
+
   private setupDataChannel(channel: RTCDataChannel): void {
     channel.binaryType = "arraybuffer";
 
     channel.onopen = () => {
+      console.log("[DataChannel] Channel opened successfully!");
       this.events.onDataChannelReady(channel);
     };
 
@@ -131,5 +195,6 @@ export class WebRTCPeer {
       this.pc.close();
       this.pc = null;
     }
+    this.candidateQueue = [];
   }
 }
