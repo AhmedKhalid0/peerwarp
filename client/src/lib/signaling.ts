@@ -93,10 +93,20 @@ export class SignalingClient {
   }
 
   private resolveSignalingUrl(roomId: string): string {
-    // 1. Explicit env override
+    // 1. Explicit env override (only if not a localhost fallback in production)
     if (process.env.NEXT_PUBLIC_SIGNALING_URL) {
       const base = process.env.NEXT_PUBLIC_SIGNALING_URL.replace(/\/+$/, "");
-      return `${base}/${roomId}`;
+      if (typeof window !== "undefined") {
+        const isLocalHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+        if (isLocalHost) {
+          return `${base}/${roomId}`;
+        }
+        if (!base.includes("127.0.0.1") && !base.includes("localhost")) {
+          return `${base}/${roomId}`;
+        }
+      } else {
+        return `${base}/${roomId}`;
+      }
     }
 
     // 2. Local dev detection (defaults to port 8002 for FastAPI)
@@ -105,11 +115,10 @@ export class SignalingClient {
       if (host === "localhost" || host === "127.0.0.1") {
         return `ws://127.0.0.1:8002/ws/${roomId}`;
       }
-      // 3. Production / Custom domain: use wss on same host
-      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-      return `${proto}//${window.location.host}/ws/${roomId}`;
+      // 3. Production: use edge Cloudflare Worker signaling
+      return `wss://peerwarp-signaling.ahmedkhaled791.workers.dev/ws/${roomId}`;
     }
 
-    return `ws://127.0.0.1:8002/ws/${roomId}`;
+    return `wss://peerwarp-signaling.ahmedkhaled791.workers.dev/ws/${roomId}`;
   }
 }
