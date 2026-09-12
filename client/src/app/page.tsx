@@ -63,7 +63,7 @@ export default function HomePage() {
     const large = newFiles.find((f) => f.size > MAX_RELAY_FILE_SIZE_BYTES);
     if (large) {
       setSizeWarning(
-        `⚡ Note: "${large.name}" is over 5 GB. Large files (up to 50 GB) transfer directly peer-to-peer (on local Wi-Fi or direct internet) without server relay. If devices require the Hetzner TURN relay server, files are capped at 5 GB.`
+        `⚡ Note: "${large.name}" is over 5 GB. Large files up to 50 GB transfer freely on direct connections (Wi-Fi or direct internet). Over mobile cellular data, transfers are limited to 5 GB.`
       );
     }
 
@@ -280,7 +280,7 @@ export default function HomePage() {
 
           if (isRelay && current.file.size > MAX_RELAY_FILE_SIZE_BYTES) {
             throw new Error(
-              `Transfer blocked: "${current.name}" exceeds the 5 GB limit for TURN relay connections. Up to 50 GB is supported on any direct P2P connection (local Wi-Fi or direct internet) where the TURN relay server is not required.`
+              `Transfer blocked: "${current.name}" exceeds the 5 GB limit for mobile cellular data transfers. Up to 50 GB is supported on direct Wi-Fi and direct internet connections.`
             );
           }
 
@@ -369,7 +369,7 @@ export default function HomePage() {
     },
     {
       q: "Is there any file size limit on PeerWarp?",
-      a: "Up to 50 GB is supported on any direct peer-to-peer connection (whether on local Wi-Fi or directly across the internet via STUN where TURN relay is not used). When transferring across restricted firewalls that force traffic through our Hetzner TURN relay server, files are capped at 5 GB to protect server bandwidth and resources.",
+      a: "Up to 50 GB is supported on direct connections (including local Wi-Fi and direct internet transfers). When transferring over mobile cellular data (4G/5G) or restricted firewall networks, files are capped at 5 GB to protect mobile data plans and server resources.",
     },
     {
       q: "How does the Local Wi-Fi Direct Radar work?",
@@ -840,7 +840,7 @@ export default function HomePage() {
                 <tr>
                   <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">File Size Limits</td>
                   <td className="p-4 sm:p-5 text-black dark:text-white font-medium flex items-center gap-1.5">
-                    <Check className="w-4 h-4 text-emerald-600" /> Up to 50 GB (Direct P2P) • 5 GB (TURN Relay)
+                    <Check className="w-4 h-4 text-emerald-600" /> Up to 50 GB (Direct) • 5 GB (Mobile Data)
                   </td>
                   <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Capped at 2 GB free unless you pay monthly</td>
                 </tr>
