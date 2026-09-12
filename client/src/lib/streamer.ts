@@ -7,7 +7,20 @@
  */
 
 import { computeSHA256 } from "./crypto";
-import { FileMetadataPacket, FileCompletePacket } from "@/types/protocol";
+import {
+  FileMetadataPacket,
+  FileCompletePacket,
+  ResumeRequestPacket,
+  ResumeAckPacket,
+} from "@/types/protocol";
+import {
+  generateFileKey,
+  saveTransferCheckpoint,
+  getTransferCheckpoint,
+  saveChunkToStorage,
+  loadAllChunks,
+  deleteTransferCheckpoint,
+} from "./checkpoint";
 import {
   isCompressibleFile,
   supportsCompression,
@@ -94,9 +107,15 @@ export class FileStreamSender {
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
     const fileId = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
     const shouldCompress = !isLocal && isCompressibleFile(file.name, file.type) && supportsCompression();
-
-    // 1. Send Metadata control packet to all active channels
     const relativePath = (file as any).relativePath || file.name;
+    const fileKey = generateFileKey({
+      name: file.name,
+      size: file.size,
+      lastModified: file.lastModified,
+      relativePath,
+    });
+
+    // 1. Prepare Metadata control packet
     const meta: FileMetadataPacket = {
       cmd: "FILE_METADATA",
       id: fileId,
@@ -107,16 +126,68 @@ export class FileStreamSender {
       totalChunks,
       chunkSize: CHUNK_SIZE,
       compressed: shouldCompress,
+      fileKey,
+      resumable: true,
     };
     const metaJson = JSON.stringify(meta);
+
+    // Setup listener for RESUME_REQUEST before transmitting metadata
+    let resumeOffset = 0;
+    const resumePromise = new Promise<number>((resolve) => {
+      const cleanups: Array<() => void> = [];
+      const timer = setTimeout(() => {
+        cleanups.forEach((c) => c());
+        resolve(0);
+      }, 350);
+
+      for (const ch of this.channels) {
+        if (ch.readyState === "open") {
+          const handler = (evt: MessageEvent) => {
+            if (typeof evt.data === "string") {
+              try {
+                const parsed = JSON.parse(evt.data);
+                if (parsed.cmd === "RESUME_REQUEST" && (parsed.id === fileId || parsed.fileKey === fileKey)) {
+                  clearTimeout(timer);
+                  cleanups.forEach((c) => c());
+                  resolve(Number(parsed.receivedBytes) || 0);
+                }
+              } catch (_) {}
+            }
+          };
+          ch.addEventListener("message", handler);
+          cleanups.push(() => ch.removeEventListener("message", handler));
+        }
+      }
+    });
+
+    // Send metadata packet to all active channels
     for (const ch of this.channels) {
       if (ch.readyState === "open") {
         ch.send(metaJson);
       }
     }
 
+    // Await receiver's resume request (up to 350ms)
+    resumeOffset = await resumePromise;
+
+    if (resumeOffset > 0 && resumeOffset < file.size) {
+      const ackPacket: ResumeAckPacket = {
+        cmd: "RESUME_ACK",
+        id: fileId,
+        fileKey,
+        startOffset: resumeOffset,
+      };
+      const ackJson = JSON.stringify(ackPacket);
+      for (const ch of this.channels) {
+        if (ch.readyState === "open") {
+          ch.send(ackJson);
+        }
+      }
+      console.log(`[FileStreamSender] Resuming "${file.name}" from ${resumeOffset} bytes (${Math.round((resumeOffset / file.size) * 100)}%)`);
+    }
+
     // 2. Stream chunks with pipelined block backpressure across all channels
-    let offset = 0;
+    let offset = resumeOffset > 0 && resumeOffset < file.size ? resumeOffset : 0;
     const startTime = performance.now();
     let lastSpeedCheckTime = startTime;
     let lastSentOverWire = 0;
@@ -299,28 +370,76 @@ export class FileStreamSender {
 
 export class FileStreamReceiver {
   private activeMetadata: FileMetadataPacket | null = null;
+  private activeFileKey = "";
   private receivedChunks: ArrayBuffer[] = [];
   private receivedBytes = 0;
+  private resumeOffset = 0;
   private startTime = 0;
   private lastSpeedCheckTime = 0;
   private lastSpeedCheckBytes = 0;
   private currentSpeedBps = 0;
   private lastProgressNotifyTime = 0;
+  private lastCheckpointSaveTime = 0;
   private directWriter: FileSystemWritableFileStream | null = null;
 
   public setDirectWriter(writer: FileSystemWritableFileStream | null): void {
     this.directWriter = writer;
   }
 
-  public handleMetadata(meta: FileMetadataPacket): void {
+  public async handleMetadata(
+    meta: FileMetadataPacket,
+    channel?: RTCDataChannel
+  ): Promise<number> {
+    const fileKey = meta.fileKey || generateFileKey({ name: meta.name, size: meta.size });
+    this.activeFileKey = fileKey;
     this.activeMetadata = meta;
-    this.receivedChunks = [];
-    this.receivedBytes = 0;
+
+    // Check IndexedDB for existing checkpoint
+    const checkpoint = await getTransferCheckpoint(fileKey);
+    let resumeBytes = 0;
+    if (checkpoint && checkpoint.receivedBytes > 0 && checkpoint.receivedBytes < meta.size) {
+      resumeBytes = checkpoint.receivedBytes;
+      this.resumeOffset = resumeBytes;
+      this.receivedBytes = resumeBytes;
+      console.log(`[FileStreamReceiver] Found checkpoint for "${meta.name}" at ${resumeBytes} bytes.`);
+    } else {
+      this.resumeOffset = 0;
+      this.receivedBytes = 0;
+      this.receivedChunks = [];
+    }
+
+    // Send RESUME_REQUEST packet back over data channel
+    if (channel && channel.readyState === "open") {
+      const resumePacket: ResumeRequestPacket = {
+        cmd: "RESUME_REQUEST",
+        id: meta.id,
+        fileKey,
+        receivedBytes: resumeBytes,
+      };
+      channel.send(JSON.stringify(resumePacket));
+    }
+
     this.startTime = performance.now();
     this.lastSpeedCheckTime = this.startTime;
-    this.lastSpeedCheckBytes = 0;
+    this.lastSpeedCheckBytes = this.receivedBytes;
     this.currentSpeedBps = 0;
     this.lastProgressNotifyTime = 0;
+    this.lastCheckpointSaveTime = this.startTime;
+
+    // Save initial checkpoint
+    saveTransferCheckpoint({
+      fileKey,
+      fileId: meta.id,
+      name: meta.name,
+      size: meta.size,
+      type: meta.type,
+      relativePath: meta.relativePath,
+      receivedBytes: this.receivedBytes,
+      totalChunks: meta.totalChunks,
+      isDirectSaved: !!this.directWriter,
+    }).catch(() => {});
+
+    return resumeBytes;
   }
 
   public async handleChunk(
@@ -335,10 +454,28 @@ export class FileStreamReceiver {
       await this.directWriter.write(chunk);
     } else {
       this.receivedChunks.push(chunk);
+      // Persist chunk to IndexedDB so transfer survives browser reconnects
+      const chunkIndex = Math.floor(this.receivedBytes / CHUNK_SIZE);
+      saveChunkToStorage(this.activeFileKey, chunkIndex, chunk).catch(() => {});
     }
     this.receivedBytes += chunk.byteLength;
 
     const now = performance.now();
+    if (now - this.lastCheckpointSaveTime > 600) {
+      this.lastCheckpointSaveTime = now;
+      saveTransferCheckpoint({
+        fileKey: this.activeFileKey,
+        fileId: this.activeMetadata.id,
+        name: this.activeMetadata.name,
+        size: this.activeMetadata.size,
+        type: this.activeMetadata.type,
+        relativePath: this.activeMetadata.relativePath,
+        receivedBytes: this.receivedBytes,
+        totalChunks: this.activeMetadata.totalChunks,
+        isDirectSaved: !!this.directWriter,
+      }).catch(() => {});
+    }
+
     const elapsedSinceCheck = (now - this.lastSpeedCheckTime) / 1000;
     if (elapsedSinceCheck >= 0.12) {
       const bytesDelta = this.receivedBytes - this.lastSpeedCheckBytes;
@@ -358,7 +495,7 @@ export class FileStreamReceiver {
       const totalElapsed = (now - this.startTime) / 1000;
       const effectiveSpeed = this.currentSpeedBps > 0
         ? this.currentSpeedBps
-        : (totalElapsed > 0.08 && this.receivedBytes > 0 ? this.receivedBytes / totalElapsed : 0);
+        : (totalElapsed > 0.08 && (this.receivedBytes - this.resumeOffset) > 0 ? (this.receivedBytes - this.resumeOffset) / totalElapsed : 0);
 
       const remainingBytes = Math.max(0, total - this.receivedBytes);
       const etaSeconds = effectiveSpeed > 0 ? remainingBytes / effectiveSpeed : 0;
@@ -381,6 +518,10 @@ export class FileStreamReceiver {
       throw new Error("No active transfer to finalize.");
     }
 
+    const fileKey = this.activeFileKey;
+    const totalChunks = this.activeMetadata.totalChunks;
+    const mimeType = this.activeMetadata.type;
+
     if (this.directWriter) {
       try {
         await this.directWriter.close();
@@ -389,16 +530,30 @@ export class FileStreamReceiver {
       this.activeMetadata = null;
       this.receivedChunks = [];
       this.receivedBytes = 0;
+      await deleteTransferCheckpoint(fileKey);
       return { blob: new Blob([]), isDirectSaved: true, verified: true, actualSha256: expectedSha256 };
     }
 
-    // Assemble Blob instantly without loading whole file into ArrayBuffer
-    const blob = new Blob(this.receivedChunks, { type: this.activeMetadata.type });
+    let blob: Blob;
+    if (this.receivedChunks.length >= totalChunks) {
+      blob = new Blob(this.receivedChunks, { type: mimeType });
+    } else {
+      // Transfer was resumed across reconnects; load combined chunks from IndexedDB
+      try {
+        const storedChunks = await loadAllChunks(fileKey, totalChunks);
+        blob = new Blob(storedChunks.filter(Boolean), { type: mimeType });
+      } catch (_) {
+        blob = new Blob(this.receivedChunks, { type: mimeType });
+      }
+    }
 
     // Reset state immediately to free chunk references
     this.activeMetadata = null;
     this.receivedChunks = [];
     this.receivedBytes = 0;
+
+    // Clean up IndexedDB checkpoint and chunks
+    await deleteTransferCheckpoint(fileKey);
 
     return { blob, isDirectSaved: false, verified: true, actualSha256: expectedSha256 };
   }

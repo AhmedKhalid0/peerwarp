@@ -39,6 +39,11 @@ export function TransferCard({ item, isReceiver = false, onDownload, onCancel }:
                 {isReceiver ? "Streaming to device..." : "Streaming directly to peer..."}
               </span>
             )}
+            {item.resumedFromBytes && item.resumedFromBytes > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-mono">
+                Resumed from {formatBytes(item.resumedFromBytes)}
+              </span>
+            )}
             {isVerifying && (
               <span className="inline-flex items-center gap-1 text-neutral-700 dark:text-neutral-300 font-medium">
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-500" />

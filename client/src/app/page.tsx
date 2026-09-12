@@ -206,6 +206,11 @@ export default function HomePage() {
                 setRouteInfo(r);
               }
             }, 600);
+          } else if (state === "disconnected") {
+            console.log("[WebRTC Host] Interruption detected. Attempting ICE restart...", peerId);
+            if (peerRef.current && peerId) {
+              peerRef.current.restartIce(peerId).catch(() => {});
+            }
           }
         },
         onDataChannelReady: (channel, peerId) => {

@@ -116,21 +116,26 @@ export default function RoomClient({ initialRoom }: RoomClientProps) {
           onConnectionStateChange: (state) => {
             console.log("[Receiver WebRTC] Connection state:", state);
             if (state === "connected") {
-              setConnectionStatus("connected");
+              setConnectionStatus((prev) => (prev === "transferring" ? "transferring" : "connected"));
+              setErrorMessage(null);
               setTimeout(async () => {
                 if (peerRef.current) {
                   const r = await peerRef.current.getActiveRoute();
                   setRouteInfo(r);
                 }
               }, 600);
-            } else if (state === "disconnected" || state === "failed") {
+            } else if (state === "disconnected") {
+              console.log("[Receiver WebRTC] Interruption detected. Waiting for connection recovery...");
+              setErrorMessage("Connection interrupted temporarily. Resuming transfer once connected...");
+            } else if (state === "failed") {
               setConnectionStatus("error");
               setErrorMessage("P2P direct connection lost.");
             }
           },
           onDataChannelReady: (channel) => {
             console.log("[Receiver DataChannel] Ready!");
-            setConnectionStatus("connected");
+            setConnectionStatus((prev) => (prev === "transferring" ? "transferring" : "connected"));
+            setErrorMessage(null);
             setupDataChannelListeners(channel);
             setTimeout(async () => {
               if (peerRef.current) {
@@ -177,7 +182,7 @@ export default function RoomClient({ initialRoom }: RoomClientProps) {
 
           if (packet.cmd === "FILE_METADATA") {
             const meta = packet as FileMetadataPacket;
-            receiverStreamerRef.current.handleMetadata(meta);
+            const resumeBytes = await receiverStreamerRef.current.handleMetadata(meta, channel);
 
             // Direct-to-Disk streaming for files > 200 MB on supported browsers (zero RAM usage)
             if (meta.size > 200 * 1024 * 1024 && supportsFileSystemAccess()) {
@@ -192,18 +197,24 @@ export default function RoomClient({ initialRoom }: RoomClientProps) {
             // Prevent mobile screen sleep while receiving
             wakeLock.request();
 
+            const initialProgress = resumeBytes > 0 ? Math.min(100, Math.round((resumeBytes / meta.size) * 100)) : 0;
+
             setActiveItem({
               id: meta.id,
               name: meta.name,
               relativePath: meta.relativePath || meta.name,
               size: meta.size,
               type: meta.type,
-              progress: 0,
+              progress: initialProgress,
               speedBps: 0,
               etaSeconds: 0,
               status: "receiving",
+              resumedFromBytes: resumeBytes > 0 ? resumeBytes : undefined,
             });
             setConnectionStatus("transferring");
+          } else if (packet.cmd === "RESUME_ACK") {
+            console.log(`[RoomClient] Sender acknowledged resume offset: ${packet.startOffset}`);
+            setActiveItem((prev) => (prev ? { ...prev, resumedFromBytes: packet.startOffset } : null));
           } else if (packet.cmd === "FILE_COMPLETE") {
             const complete = packet as FileCompletePacket;
             setActiveItem((prev) => (prev ? { ...prev, status: "verifying" } : null));

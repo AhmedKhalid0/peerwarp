@@ -340,6 +340,33 @@ export class WebRTCPeer {
     return { type: "unknown", label: "Local Wi-Fi / P2P Direct", isLocal: true };
   }
 
+  public async restartIce(peerId?: string): Promise<void> {
+    if (this.role === "initiator") {
+      const records = peerId ? [this.peers.get(peerId)].filter(Boolean) : Array.from(this.peers.values());
+      for (const record of records) {
+        if (!record) continue;
+        try {
+          if (typeof (record.pc as any).restartIce === "function") {
+            (record.pc as any).restartIce();
+          }
+          const offer = await record.pc.createOffer({ iceRestart: true });
+          await record.pc.setLocalDescription(offer);
+          const targetId = Array.from(this.peers.entries()).find(([, r]) => r === record)?.[0];
+          if (targetId) {
+            this.signaling.send({
+              type: "offer",
+              to: targetId,
+              payload: { sdp: offer.sdp, type: offer.type },
+            });
+            console.log(`[WebRTC Host] Sent ICE restart offer to ${targetId}`);
+          }
+        } catch (err) {
+          console.warn("[WebRTC Host] ICE restart failed:", err);
+        }
+      }
+    }
+  }
+
   public close(): void {
     if (this.singleChannel) {
       this.singleChannel.close();

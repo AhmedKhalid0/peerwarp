@@ -66,7 +66,9 @@ export type DataChannelControlCommand =
   | "FILE_METADATA"
   | "CHUNK_ACK"
   | "FILE_COMPLETE"
-  | "TRANSFER_CANCEL";
+  | "TRANSFER_CANCEL"
+  | "RESUME_REQUEST"
+  | "RESUME_ACK";
 
 export interface FileMetadataPacket {
   cmd: "FILE_METADATA";
@@ -77,8 +79,24 @@ export interface FileMetadataPacket {
   type: string;
   totalChunks: number;
   chunkSize: number;
+  fileKey?: string;
+  resumable?: boolean;
   expectedSha256?: string;
   compressed?: boolean;
+}
+
+export interface ResumeRequestPacket {
+  cmd: "RESUME_REQUEST";
+  id: string;
+  fileKey: string;
+  receivedBytes: number;
+}
+
+export interface ResumeAckPacket {
+  cmd: "RESUME_ACK";
+  id: string;
+  fileKey: string;
+  startOffset: number;
 }
 
 export interface FileCompletePacket {
@@ -95,6 +113,8 @@ export interface TransferCancelPacket {
 
 export type ControlPacket =
   | FileMetadataPacket
+  | ResumeRequestPacket
+  | ResumeAckPacket
   | FileCompletePacket
   | TransferCancelPacket;
 
@@ -124,6 +144,7 @@ export interface FileTransferItem {
   blobUrl?: string;
   blobData?: Uint8Array;
   isDirectSaved?: boolean;
+  resumedFromBytes?: number;
   error?: string;
 }
 

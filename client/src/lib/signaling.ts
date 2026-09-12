@@ -12,9 +12,12 @@ export class SignalingClient {
   private socket: WebSocket | null = null;
   private roomId: string;
   private onMessageCallback: SignalingEventHandler;
+  private assignedPeerId: string | null = null;
   private pingIntervalId: any = null;
   private isExplicitlyClosed = false;
-  private assignedPeerId: string | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectTimer: any = null;
 
   constructor(roomId: string, onMessage: SignalingEventHandler) {
     this.roomId = roomId.toUpperCase().trim();
@@ -34,6 +37,7 @@ export class SignalingClient {
         this.socket = new WebSocket(wsUrl);
 
         this.socket.onopen = () => {
+          this.reconnectAttempts = 0;
           this.startHeartbeat();
           resolve();
         };
@@ -58,10 +62,21 @@ export class SignalingClient {
         this.socket.onclose = (event) => {
           this.stopHeartbeat();
           if (!this.isExplicitlyClosed) {
-            this.onMessageCallback({
-              type: "peer_left",
-              message: "Signaling connection closed.",
-            });
+            if (this.reconnectAttempts < this.maxReconnectAttempts) {
+              this.reconnectAttempts++;
+              const delay = Math.min(1000 * Math.pow(1.5, this.reconnectAttempts), 5000);
+              console.log(`[Signaling] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+              this.reconnectTimer = setTimeout(() => {
+                this.connect().catch((err) => {
+                  console.warn("[Signaling] Reconnect failed:", err);
+                });
+              }, delay);
+            } else {
+              this.onMessageCallback({
+                type: "peer_left",
+                message: "Signaling connection closed permanently.",
+              });
+            }
           }
         };
       } catch (err) {
@@ -107,6 +122,10 @@ export class SignalingClient {
 
   public close(): void {
     this.isExplicitlyClosed = true;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     this.stopHeartbeat();
     if (this.socket) {
       this.socket.close();
