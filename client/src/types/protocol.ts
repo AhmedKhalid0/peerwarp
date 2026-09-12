@@ -41,6 +41,7 @@ export interface SignalingEnvelope {
   deviceInfo?: string;
   requireApproval?: boolean;
   approved?: boolean;
+  targetPeerId?: string;
   radarPeers?: RadarPeer[];
 }
 

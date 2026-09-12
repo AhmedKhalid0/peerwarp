@@ -92,6 +92,7 @@ export class SignalingClient {
   public approvePeer(targetPeerId: string): void {
     this.send({
       type: "approve_peer",
+      targetPeerId,
       payload: { targetPeerId },
     });
   }
@@ -99,6 +100,7 @@ export class SignalingClient {
   public rejectPeer(targetPeerId: string): void {
     this.send({
       type: "reject_peer",
+      targetPeerId,
       payload: { targetPeerId },
     });
   }
@@ -129,23 +131,19 @@ export class SignalingClient {
   private resolveSignalingUrl(roomId: string): string {
     const deviceParam = `device=${encodeURIComponent(getDeviceSummary())}`;
 
-    // 1. Explicit env override
-    if (process.env.NEXT_PUBLIC_SIGNALING_URL) {
-      const base = process.env.NEXT_PUBLIC_SIGNALING_URL.replace(/\/+$/, "");
-      const separator = base.includes("?") ? "&" : "?";
-      return `${base}/${roomId}${separator}${deviceParam}`;
-    }
-
-    // 2. Local dev detection (defaults to port 8002 for FastAPI)
+    // Local dev detection only if running in browser on localhost or 127.0.0.1
     if (typeof window !== "undefined") {
       const host = window.location.hostname;
       if (host === "localhost" || host === "127.0.0.1") {
-        return `ws://127.0.0.1:8002/ws/${roomId}?${deviceParam}`;
+        const localBase = process.env.NEXT_PUBLIC_SIGNALING_URL || "ws://127.0.0.1:8002/ws";
+        return `${localBase.replace(/\/+$/, "")}/${roomId}?${deviceParam}`;
       }
-      // 3. Production: use edge Cloudflare Worker signaling
-      return `wss://peerwarp-signaling.ahmedkhaled791.workers.dev/ws/${roomId}?${deviceParam}`;
+
+      // Production: use same-origin WebSocket proxy at /ws/*
+      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+      return `${proto}//${window.location.host}/ws/${roomId}?${deviceParam}`;
     }
 
-    return `wss://peerwarp-signaling.ahmedkhaled791.workers.dev/ws/${roomId}?${deviceParam}`;
+    return `wss://peerwarp.com/ws/${roomId}?${deviceParam}`;
   }
 }
