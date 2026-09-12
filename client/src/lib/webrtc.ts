@@ -279,6 +279,67 @@ export class WebRTCPeer {
     return channels.length > 0 ? channels[0] : null;
   }
 
+  public async getActiveRoute(peerId?: string): Promise<{
+    type: "wifi_direct" | "p2p_stun" | "relay" | "unknown";
+    label: string;
+    isLocal: boolean;
+  }> {
+    let pc: RTCPeerConnection | null = null;
+    if (this.role === "receiver") {
+      pc = this.singlePc;
+    } else if (peerId) {
+      pc = this.peers.get(peerId)?.pc || null;
+    } else if (this.peers.size > 0) {
+      pc = Array.from(this.peers.values())[0]?.pc || null;
+    }
+
+    if (!pc) {
+      return { type: "unknown", label: "P2P Connection", isLocal: true };
+    }
+
+    try {
+      const stats = await pc.getStats();
+      let activePair: any = null;
+      for (const entry of stats.values()) {
+        if (entry.type === "transport" && entry.selectedCandidatePairId) {
+          activePair = stats.get(entry.selectedCandidatePairId);
+        }
+        if (entry.type === "candidate-pair" && (entry.selected || entry.state === "succeeded")) {
+          activePair = entry;
+        }
+      }
+
+      if (activePair) {
+        const localCand = stats.get(activePair.localCandidateId);
+        const remoteCand = stats.get(activePair.remoteCandidateId);
+        const localType = localCand?.candidateType;
+        const remoteType = remoteCand?.candidateType;
+
+        if (localType === "host" && remoteType === "host") {
+          return {
+            type: "wifi_direct",
+            label: "Local Wi-Fi Direct (0 MB Internet Used • Router Speed)",
+            isLocal: true,
+          };
+        }
+        if (localType === "relay" || remoteType === "relay") {
+          return {
+            type: "relay",
+            label: "Cloud Relay Tunnel (Encrypted)",
+            isLocal: false,
+          };
+        }
+        return {
+          type: "p2p_stun",
+          label: "Direct P2P Internet (Encrypted DTLS)",
+          isLocal: false,
+        };
+      }
+    } catch (_) {}
+
+    return { type: "unknown", label: "Local Wi-Fi / P2P Direct", isLocal: true };
+  }
+
   public close(): void {
     if (this.singleChannel) {
       this.singleChannel.close();

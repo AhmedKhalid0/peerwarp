@@ -62,6 +62,7 @@ export default function HomePage() {
   const [roomId, setRoomId] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string>("");
   const [peerCount, setPeerCount] = useState(1);
+  const [routeInfo, setRouteInfo] = useState<{ type: string; label: string; isLocal: boolean } | null>(null);
   const [transferItems, setTransferItems] = useState<FileTransferItem[]>([]);
   const [activeItemIndex, setActiveItemIndex] = useState(0);
 
@@ -180,9 +181,23 @@ export default function HomePage() {
       const peer = new WebRTCPeer("initiator", signaling, {
         onConnectionStateChange: (state, peerId) => {
           console.log("[WebRTC Host] Peer state change:", peerId, state);
+          if (state === "connected") {
+            setTimeout(async () => {
+              if (peerRef.current) {
+                const r = await peerRef.current.getActiveRoute(peerId);
+                setRouteInfo(r);
+              }
+            }, 600);
+          }
         },
         onDataChannelReady: (channel, peerId) => {
           console.log("[DataChannel] Ready for peer:", peerId);
+          setTimeout(async () => {
+            if (peerRef.current) {
+              const r = await peerRef.current.getActiveRoute(peerId);
+              setRouteInfo(r);
+            }
+          }, 600);
           if (!senderStreamerRef.current) {
             const streamer = new FileStreamSender(channel);
             senderStreamerRef.current = streamer;
@@ -564,6 +579,26 @@ export default function HomePage() {
                 Start New Transfer
               </button>
             </div>
+
+            {/* Live Network Route Badge (Zero Internet / Local Wi-Fi Proof) */}
+            {routeInfo && (
+              <div className="flex items-center justify-center">
+                <div
+                  className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold border shadow-2xs transition-all ${
+                    routeInfo.isLocal
+                      ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
+                      : "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                  }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      routeInfo.isLocal ? "bg-emerald-500 animate-pulse" : "bg-blue-500"
+                    }`}
+                  />
+                  <span>{routeInfo.label}</span>
+                </div>
+              </div>
+            )}
 
             {/* Pairing Modal with Code and QR */}
             <PairingModal

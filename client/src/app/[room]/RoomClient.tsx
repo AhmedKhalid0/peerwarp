@@ -38,6 +38,7 @@ export default function RoomClient({ initialRoom }: RoomClientProps) {
     "connecting" | "waiting_for_approval" | "waiting_for_sender" | "connected" | "transferring" | "completed" | "error"
   >("connecting");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [routeInfo, setRouteInfo] = useState<{ type: string; label: string; isLocal: boolean } | null>(null);
   const [activeItem, setActiveItem] = useState<FileTransferItem | null>(null);
   const [receivedFiles, setReceivedFiles] = useState<FileTransferItem[]>([]);
   const [isZipping, setIsZipping] = useState<boolean>(false);
@@ -116,6 +117,12 @@ export default function RoomClient({ initialRoom }: RoomClientProps) {
             console.log("[Receiver WebRTC] Connection state:", state);
             if (state === "connected") {
               setConnectionStatus("connected");
+              setTimeout(async () => {
+                if (peerRef.current) {
+                  const r = await peerRef.current.getActiveRoute();
+                  setRouteInfo(r);
+                }
+              }, 600);
             } else if (state === "disconnected" || state === "failed") {
               setConnectionStatus("error");
               setErrorMessage("P2P direct connection lost.");
@@ -125,6 +132,12 @@ export default function RoomClient({ initialRoom }: RoomClientProps) {
             console.log("[Receiver DataChannel] Ready!");
             setConnectionStatus("connected");
             setupDataChannelListeners(channel);
+            setTimeout(async () => {
+              if (peerRef.current) {
+                const r = await peerRef.current.getActiveRoute();
+                setRouteInfo(r);
+              }
+            }, 600);
           },
           onError: (err) => {
             console.error("[Receiver WebRTC] Error:", err);
@@ -343,6 +356,26 @@ export default function RoomClient({ initialRoom }: RoomClientProps) {
           </span>
         </div>
       </div>
+
+      {/* Live Network Route Badge (Zero Internet / Local Wi-Fi Proof) */}
+      {routeInfo && (
+        <div className="flex items-center justify-center">
+          <div
+            className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold border shadow-2xs transition-all ${
+              routeInfo.isLocal
+                ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
+                : "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+            }`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                routeInfo.isLocal ? "bg-emerald-500 animate-pulse" : "bg-blue-500"
+              }`}
+            />
+            <span>{routeInfo.label}</span>
+          </div>
+        </div>
+      )}
 
       {/* Main Status Canvas */}
       <div className="space-y-6">
