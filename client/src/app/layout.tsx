@@ -3,9 +3,9 @@ import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 
 const siteUrl = "https://peerwarp.com";
-const title = "PeerWarp — Free Zero-Cloud-Storage P2P File Transfer";
+const title = "PeerWarp — Send Large Files Directly with No Size Limits";
 const description =
-  "Stream unlimited files directly device-to-device using WebRTC DataChannels. No cloud storage, no file size limits, end-to-end encrypted, and 100% free forever.";
+  "Stream files of any size directly device-to-device with zero cloud uploads and no storage caps. Direct browser-to-browser P2P streaming, end-to-end encrypted, and 100% free.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

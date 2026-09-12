@@ -48,22 +48,15 @@ export default function HomePage() {
   const [joinCodeInput, setJoinCodeInput] = useState("");
   const [canInstallPwa, setCanInstallPwa] = useState(false);
   const [radarInvite, setRadarInvite] = useState<any | null>(null);
-  const MAX_DIRECT_FILE_SIZE_BYTES = 50 * 1024 * 1024 * 1024; // 50 GB
   const MAX_RELAY_FILE_SIZE_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB
   const [sizeWarning, setSizeWarning] = useState<string | null>(null);
 
   const handleFilesSelected = (newFiles: File[]) => {
     setSizeWarning(null);
-    const oversized = newFiles.find((f) => f.size > MAX_DIRECT_FILE_SIZE_BYTES);
-    if (oversized) {
-      alert(`The file "${oversized.name}" exceeds the maximum limit of 50 GB.`);
-      return;
-    }
-
     const large = newFiles.find((f) => f.size > MAX_RELAY_FILE_SIZE_BYTES);
     if (large) {
       setSizeWarning(
-        `⚡ Note: "${large.name}" is over 5 GB. Large files up to 50 GB transfer freely on direct connections (Wi-Fi or direct internet). Over mobile cellular data, transfers are limited to 5 GB.`
+        `⚡ Note: "${large.name}" is over 5 GB. Large files stream freely with no size limits on direct Wi-Fi or internet connections.`
       );
     }
 
@@ -374,7 +367,7 @@ export default function HomePage() {
     },
     {
       q: "Is there any file size limit on PeerWarp?",
-      a: "Up to 50 GB is supported on direct connections (including local Wi-Fi and direct internet transfers). When transferring over mobile cellular data (4G/5G) or restricted firewall networks, files are capped at 5 GB to protect mobile data plans and server resources.",
+      a: "No artificial size limits! PeerWarp streams files of any size directly device-to-device using WebRTC micro-chunking. Because files are streamed directly from browser to browser and never uploaded to cloud servers, you can send massive videos, disk images, and archives freely without cloud storage caps.",
     },
     {
       q: "How does the Local Wi-Fi Direct Radar work?",
@@ -404,13 +397,13 @@ export default function HomePage() {
         </div>
 
         <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50">
-          Direct P2P File Transfer. <br className="hidden sm:inline" />
-          No Cloud Storage. Zero Limits.
+          Send Large Files Directly. <br className="hidden sm:inline" />
+          No Cloud Uploads. No Size Limits.
         </h1>
 
         <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-400 leading-relaxed max-w-xl mx-auto">
-          PeerWarp streams videos, archives, and folders directly from your browser to another device using WebRTC.
-          No cloud storage, no registration, and 100% free forever.
+          Stream files of any size directly from your browser to another device using WebRTC.
+          Zero cloud storage, no account required, and 100% free forever.
         </p>
       </section>
 
@@ -864,7 +857,7 @@ export default function HomePage() {
                 <tr>
                   <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">File Size Limits</td>
                   <td className="p-4 sm:p-5 text-black dark:text-white font-medium flex items-center gap-1.5">
-                    <Check className="w-4 h-4 text-emerald-600" /> Up to 50 GB (Direct) • 5 GB (Mobile Data)
+                    <Check className="w-4 h-4 text-emerald-600" /> No artificial limits (Stream any file size)
                   </td>
                   <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Capped at 2 GB free unless you pay monthly</td>
                 </tr>
