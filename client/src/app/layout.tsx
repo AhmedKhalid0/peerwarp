@@ -26,8 +26,8 @@ export const metadata: Metadata = {
     "open source file share",
     "end to end encrypted file transfer",
   ],
-  authors: [{ name: "Ahmed Khaled (Ahmed Algendy)", url: "https://ahmedalgendy.com" }],
-  creator: "Ahmed Khaled (Ahmed Algendy)",
+  authors: [{ name: "Ahmed Algendy", url: "https://ahmedalgendy.com" }],
+  creator: "Ahmed Algendy",
   publisher: "PeerWarp Open Source",
   alternates: {
     canonical: siteUrl,
@@ -102,7 +102,7 @@ const jsonLd = {
       ],
       "author": {
         "@type": "Person",
-        "name": "Ahmed Khaled (Ahmed Algendy)",
+        "name": "Ahmed Algendy",
         "url": "https://ahmedalgendy.com",
       },
     },
@@ -185,11 +185,23 @@ export default function RootLayout({
         <main className="flex-1 flex flex-col">{children}</main>
 
         <footer className="border-t border-neutral-200 dark:border-neutral-800 py-8 bg-neutral-50 dark:bg-neutral-950 text-xs text-neutral-500 dark:text-neutral-400">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 sm:gap-3">
               <span className="font-semibold text-neutral-900 dark:text-neutral-100">PeerWarp</span>
               <span>•</span>
-              <span>100% Free & Open Source</span>
+              <a
+                href="/privacy"
+                className="hover:text-neutral-900 dark:hover:text-neutral-100 hover:underline transition-colors"
+              >
+                Privacy Policy
+              </a>
+              <span>•</span>
+              <a
+                href="/terms"
+                className="hover:text-neutral-900 dark:hover:text-neutral-100 hover:underline transition-colors"
+              >
+                Terms of Use & Legal Disclaimer
+              </a>
               <span>•</span>
               <span>MIT License</span>
             </div>
@@ -202,7 +214,7 @@ export default function RootLayout({
                 rel="noopener noreferrer"
                 className="font-medium text-black dark:text-white hover:underline"
               >
-                Ahmed Khaled (Ahmed Algendy)
+                Ahmed Algendy
               </a>
             </div>
           </div>

@@ -721,6 +721,25 @@ export default function HomePage() {
             onDeclineInvite={() => setRadarInvite(null)}
           />
         )}
+
+        {/* Legal Disclaimer & User Responsibility Trust Notice */}
+        <div className="mt-4 text-center text-xs text-neutral-500 dark:text-neutral-400">
+          <span>By transferring or receiving files, you agree to our </span>
+          <a
+            href="/terms"
+            className="font-medium text-neutral-800 dark:text-neutral-200 underline hover:text-indigo-600 dark:hover:text-indigo-400"
+          >
+            Terms of Use & Legal Disclaimer
+          </a>
+          <span> and </span>
+          <a
+            href="/privacy"
+            className="font-medium text-neutral-800 dark:text-neutral-200 underline hover:text-indigo-600 dark:hover:text-indigo-400"
+          >
+            Privacy Policy
+          </a>
+          <span>. Transfers are direct P2P; users bear sole responsibility for content.</span>
+        </div>
       </div>
 
       {/* ========================================================= */}
@@ -966,8 +985,17 @@ export default function HomePage() {
             100% Free Open Source
           </span>
         </div>
-        <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
-          PeerWarp is an open-source peer-to-peer file streaming web application. No files, logs, or analytics cookies are collected.
+        <p className="text-[11px] text-neutral-400 dark:text-neutral-500 max-w-2xl mx-auto leading-relaxed">
+          PeerWarp is an open-source peer-to-peer file streaming web application engineered by{" "}
+          <a
+            href="https://ahmedalgendy.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-neutral-600 dark:text-neutral-300 hover:underline font-medium"
+          >
+            Ahmed Algendy
+          </a>
+          . All transfers operate as direct P2P conduits with zero server storage. Users bear sole and exclusive legal responsibility for all transmitted content.
         </p>
       </footer>
     </div>

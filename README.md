@@ -11,7 +11,7 @@
 [![TURN Server](https://img.shields.io/badge/COTURN-Hetzner_Node_TLS-d50c2d.svg?logo=hetzner)](https://peerwarp.com)
 [![PWA](https://img.shields.io/badge/PWA-Web_Share_Target-blueviolet.svg?logo=pwa)](https://peerwarp.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
-[![Author](https://img.shields.io/badge/Author-Ahmed%20Khaled-indigo.svg)](https://ahmedalgendy.com)
+[![Author](https://img.shields.io/badge/Author-Ahmed%20Algendy-indigo.svg)](https://ahmedalgendy.com)
 
 [**Live Production App**](https://peerwarp.com) • [**System Architecture**](docs/ARCHITECTURE.md) • [**Bug Report**](https://github.com/AhmedKhalid0/peerwarp/issues)
 
@@ -252,7 +252,7 @@ peerwarp/
 
 ## 👤 Author & Architecture Lead
 
-**Ahmed Khaled (Ahmed Algendy)**
+**Ahmed Algendy**
 - Website: [ahmedalgendy.com](https://ahmedalgendy.com)
 - GitHub: [@AhmedKhalid0](https://github.com/AhmedKhalid0)
 - Email: [contact@ahmedalgendy.com](mailto:contact@ahmedalgendy.com)
