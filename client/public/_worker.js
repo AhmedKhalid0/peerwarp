@@ -9,7 +9,6 @@
  * - SPA Dynamic routing
  */
 
-const TURN_STATIC_SECRET = "peerwarp_sec_9f8a3b2c1e4d567890abcdef12345678";
 const TURN_RELAY_DOMAIN = "turn.peerwarp.com";
 
 // In-Memory Edge Rate Limiters
@@ -30,13 +29,13 @@ function isRateLimited(tracker, ip, maxLimit, windowMs) {
   return false;
 }
 
-async function generateTurnCredentials(roomId) {
+async function generateTurnCredentials(roomId, secretKey) {
   const expiry = Math.floor(Date.now() / 1000) + 3600; // 1 hour validity
   const username = `${expiry}:${roomId}`;
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
-    enc.encode(TURN_STATIC_SECRET),
+    enc.encode(secretKey || "peerwarp_sec_fallback_secret_key"),
     { name: "HMAC", hash: "SHA-1" },
     false,
     ["sign"]
@@ -117,7 +116,7 @@ export default {
       }
 
       try {
-        const payload = await generateTurnCredentials(room);
+        const payload = await generateTurnCredentials(room, env.TURN_STATIC_SECRET);
         return new Response(JSON.stringify(payload), {
           headers: {
             "Content-Type": "application/json",
@@ -145,8 +144,8 @@ export default {
           });
         }
 
-        // Cloudflare Turnstile Secret Key for peerwarp
-        const secretKey = env.TURNSTILE_SECRET_KEY || "0x4AAAAAAExnrLJDqeWUSTU28sjeomT5Qeo";
+        // Cloudflare Turnstile Secret Key (read securely from Cloudflare KMS)
+        const secretKey = env.TURNSTILE_SECRET_KEY;
         const verifyRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
