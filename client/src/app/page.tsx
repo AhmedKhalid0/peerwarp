@@ -42,12 +42,9 @@ import { wakeLock } from "@/lib/wakelock";
 import { generateShortRoomCode, generateEphemeralKey } from "@/lib/id";
 import { initPwaInstallPrompt, promptPwaInstall, getAndClearSharedFiles } from "@/lib/pwa";
 
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB limit
-
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<"send" | "receive" | "radar">("send");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [sizeLimitWarning, setSizeLimitWarning] = useState<string | null>(null);
   const [joinCodeInput, setJoinCodeInput] = useState("");
   const [canInstallPwa, setCanInstallPwa] = useState(false);
   const [radarInvite, setRadarInvite] = useState<any | null>(null);
@@ -335,23 +332,31 @@ export default function HomePage() {
   const faqs = [
     {
       q: "Where do my files get uploaded on PeerWarp?",
-      a: "Nowhere. PeerWarp uses WebRTC to establish a direct cryptographic bridge between your browser and the recipient's browser. Files stream memory-to-memory and are never uploaded to any cloud server or staged on third-party disks.",
+      a: "Nowhere. PeerWarp uses WebRTC to establish a direct cryptographic peer-to-peer bridge between your browser and the recipient's browser. Files stream directly memory-to-memory and are never uploaded to any cloud server or staged on third-party disks.",
     },
     {
-      q: "Is there a file size limit on PeerWarp?",
-      a: "No. PeerWarp is 100% free with no file size limits. Because files are never stored on servers, there are no artificial 2 GB or 5 GB caps. You can stream 500 MB video clips or 50 GB project archives directly.",
+      q: "Does transferring files on the same Wi-Fi consume my internet quota?",
+      a: "Zero KB! When both devices are on the same Wi-Fi router, WebRTC establishes a direct local host connection. The transfer happens purely over your local wireless hardware at up to 500+ Mbps, consuming 0 MB of your mobile data or home internet bundle.",
     },
     {
-      q: "Do I or the receiver need an account or app?",
-      a: "No account, app, or email is required. PeerWarp runs directly inside any modern web browser on desktop and mobile, including Chrome, Safari, Firefox, Edge, iOS Safari, and Android Chrome.",
+      q: "Is there any file size limit on PeerWarp?",
+      a: "No. PeerWarp has no artificial file size caps. Because files stream directly between peers in 64 KB micro-chunks without touching cloud disks, you can send small photos, large 4K video footage, or 50 GB+ archives without paying any fee.",
     },
     {
-      q: "How fast is direct P2P file transfer?",
-      a: "If both devices are on the same Wi-Fi or router, files transfer locally at maximum hardware network speed (50 to 100+ MB/s) consuming zero internet bandwidth. Over the internet, it utilizes your full peer-to-peer connection speed without cloud throttling.",
+      q: "How does the 1-Click Local Wi-Fi Radar (AirDrop) work?",
+      a: "Open the 'Wi-Fi Radar' tab on any devices sharing your local network. Devices appear automatically on the live radar screen without typing codes. Simply select a file and tap the device icon to transfer instantly across iPhone, Android, Mac, Windows, and Linux.",
+    },
+    {
+      q: "How fast is direct P2P file transfer on PeerWarp?",
+      a: "On local Wi-Fi, transfers reach hardware speeds of up to 500+ Mbps (60–80+ MB/s). When transferring across separate locations or mobile 4G/5G, PeerWarp dynamically optimizes WebRTC buffering and utilizes our global low-latency TURN relay as an automatic fallback.",
+    },
+    {
+      q: "Do I or the receiver need to install software or register an account?",
+      a: "No app installation, account, or email is required. PeerWarp runs directly inside any modern web browser on desktop and mobile, including Safari on iOS, Chrome on Android, Firefox, and Edge.",
     },
     {
       q: "Can anyone else intercept or view my files?",
-      a: "No. The direct peer-to-peer data channel is encrypted end-to-end using DTLS 1.3 and SCTP cryptography. Once the transfer completes, the receiver's browser verifies the cryptographic SHA-256 hash to guarantee bit-for-bit file integrity.",
+      a: "No. All transfers are encrypted end-to-end using DTLS 1.3 and SCTP protocols. In addition, PeerWarp computes a cryptographic SHA-256 checksum during streaming to guarantee 100% bit-for-bit file integrity upon completion.",
     },
   ];
 
@@ -373,6 +378,45 @@ export default function HomePage() {
           PeerWarp streams videos, archives, and folders directly from your browser to another device using WebRTC.
           No cloud storage, no registration, and 100% free forever.
         </p>
+
+        {/* Platform Performance Metrics Strip */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 max-w-2xl mx-auto">
+          <div className="p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-center shadow-2xs">
+            <div className="text-xl sm:text-2xl font-black tracking-tight text-neutral-900 dark:text-neutral-50 font-mono">
+              0 MB
+            </div>
+            <div className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mt-0.5">
+              Cloud Storage Used
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-center shadow-2xs">
+            <div className="text-xl sm:text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400 font-mono">
+              0 KB
+            </div>
+            <div className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mt-0.5">
+              Internet Quota on Wi-Fi
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-center shadow-2xs">
+            <div className="text-xl sm:text-2xl font-black tracking-tight text-neutral-900 dark:text-neutral-50 font-mono">
+              500+ Mbps
+            </div>
+            <div className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mt-0.5">
+              Local Wi-Fi Throughput
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-center shadow-2xs">
+            <div className="text-xl sm:text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400 font-mono">
+              Unlimited
+            </div>
+            <div className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mt-0.5">
+              Max File Size Cap
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Main Mode Switcher (Send / Receive / Radar) */}
@@ -435,33 +479,9 @@ export default function HomePage() {
           <div className="space-y-6">
             <DropZone
               onFilesSelected={(newFiles) => {
-                setSizeLimitWarning(null);
-                const valid: File[] = [];
-                const oversized: string[] = [];
-                for (const f of newFiles) {
-                  if (f.size > MAX_FILE_SIZE_BYTES) {
-                    oversized.push(f.name);
-                  } else {
-                    valid.push(f);
-                  }
-                }
-                if (oversized.length > 0) {
-                  setSizeLimitWarning(
-                    `"${oversized.join('", "')}" exceeds the 5 GB limit for the free web version. (Self-host PeerWarp for unlimited file sizes).`
-                  );
-                }
-                if (valid.length > 0) {
-                  setSelectedFiles((prev) => [...prev, ...valid]);
-                }
+                setSelectedFiles((prev) => [...prev, ...newFiles]);
               }}
             />
-
-            {sizeLimitWarning && (
-              <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs sm:text-sm">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{sizeLimitWarning}</span>
-              </div>
-            )}
 
             {selectedFiles.length > 0 && (
               <div className="space-y-5">
@@ -727,15 +747,15 @@ export default function HomePage() {
             </div>
             <div className="space-y-1.5">
               <h3 className="font-semibold text-base text-neutral-900 dark:text-neutral-100">
-                Select Your Files
+                Choose Files or Full Folders
               </h3>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                Drag and drop your photos, 4K videos, zip archives, or documents. Add as many files as you want with no size caps.
+                Drag and drop photos, 4K video footage, 50 GB+ zip archives, or pick entire directory trees using our large Browse buttons. No file size restrictions.
               </p>
             </div>
             <div className="pt-2 text-[11px] text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5">
-              <Check className="w-3.5 h-3.5 text-neutral-700 dark:text-neutral-300" />
-              <span>Never uploaded to any server</span>
+              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>0 MB Cloud Storage • 100% In-Browser</span>
             </div>
           </article>
 
@@ -745,19 +765,19 @@ export default function HomePage() {
               <div className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-black dark:text-white border border-neutral-200 dark:border-neutral-700 flex items-center justify-center font-bold text-sm">
                 2
               </div>
-              <QrCode className="w-5 h-5 text-neutral-400" />
+              <Radio className="w-5 h-5 text-neutral-400" />
             </div>
             <div className="space-y-1.5">
               <h3 className="font-semibold text-base text-neutral-900 dark:text-neutral-100">
-                Share Link or QR Code
+                1-Click AirDrop Radar or Room Code
               </h3>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                PeerWarp generates a one-time QR code and a 6-character room code. Scan it with a phone camera or send the direct link.
+                Discover nearby devices automatically on the Local Wi-Fi Radar, or share your high-entropy 8-character room code and instant QR code.
               </p>
             </div>
             <div className="pt-2 text-[11px] text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5">
-              <Check className="w-3.5 h-3.5 text-neutral-700 dark:text-neutral-300" />
-              <span>Instant pairing across iOS, Android, PC & Mac</span>
+              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Cross-platform (iOS, Android, Windows, Mac, Linux)</span>
             </div>
           </article>
 
@@ -767,19 +787,19 @@ export default function HomePage() {
               <div className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-black dark:text-white border border-neutral-200 dark:border-neutral-700 flex items-center justify-center font-bold text-sm">
                 3
               </div>
-              <Zap className="w-5 h-5 text-neutral-400" />
+              <Zap className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div className="space-y-1.5">
               <h3 className="font-semibold text-base text-neutral-900 dark:text-neutral-100">
-                Direct Memory Streaming
+                Direct Hardware-Speed Streaming
               </h3>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                Data streams straight from browser memory to browser memory. The receiver saves the file directly upon completion.
+                Data streams memory-to-memory via encrypted WebRTC at up to 500+ Mbps on local Wi-Fi with 0 KB internet quota used and SHA-256 integrity verification.
               </p>
             </div>
             <div className="pt-2 text-[11px] text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5">
-              <Check className="w-3.5 h-3.5 text-neutral-700 dark:text-neutral-300" />
-              <span>Encrypted with SHA-256 verification</span>
+              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Up to 500+ Mbps • End-to-End DTLS 1.3 Encrypted</span>
             </div>
           </article>
         </div>
@@ -815,30 +835,44 @@ export default function HomePage() {
                 <tr>
                   <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">File Storage</td>
                   <td className="p-4 sm:p-5 text-black dark:text-white font-medium flex items-center gap-1.5">
-                    <Check className="w-4 h-4 text-emerald-600" /> Zero cloud storage (in-memory only)
+                    <Check className="w-4 h-4 text-emerald-600" /> Zero cloud storage (100% memory streaming)
                   </td>
-                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Stored on 3rd-party servers for days</td>
+                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Stored on 3rd-party servers for days/weeks</td>
                 </tr>
                 <tr>
                   <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">File Size Limits</td>
-                  <td className="p-4 sm:p-5 text-black dark:text-white font-medium">
-                    Unlimited (1 GB, 20 GB, 50 GB+)
+                  <td className="p-4 sm:p-5 text-black dark:text-white font-medium flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-emerald-600" /> Unlimited (1 GB, 20 GB, 50 GB+)
                   </td>
-                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Capped at 2 GB unless you pay a monthly fee</td>
+                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Capped at 2 GB free unless you pay monthly</td>
+                </tr>
+                <tr>
+                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">Local Wi-Fi Speed</td>
+                  <td className="p-4 sm:p-5 text-black dark:text-white font-medium flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-emerald-600" /> Up to 500+ Mbps (Hardware LAN speed)
+                  </td>
+                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Limited by home/office ISP upload bandwidth</td>
+                </tr>
+                <tr>
+                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">Internet Quota on Wi-Fi</td>
+                  <td className="p-4 sm:p-5 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> 0 KB consumed (transfers locally)
+                  </td>
+                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Double quota consumed (upload + download)</td>
+                </tr>
+                <tr>
+                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">Nearby Device Discovery</td>
+                  <td className="p-4 sm:p-5 text-neutral-900 dark:text-neutral-200">
+                    1-Click Local Wi-Fi Radar (AirDrop-style)
+                  </td>
+                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Requires typing email addresses or invite links</td>
                 </tr>
                 <tr>
                   <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">Transfer Flow</td>
                   <td className="p-4 sm:p-5 text-neutral-900 dark:text-neutral-200">
                     Direct stream: receiver downloads immediately
                   </td>
-                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Must upload 100% first, then receiver downloads</td>
-                </tr>
-                <tr>
-                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">Local Wi-Fi Speed</td>
-                  <td className="p-4 sm:p-5 text-neutral-900 dark:text-neutral-200">
-                    Gigabit LAN speed (50–100 MB/s, 0 quota used)
-                  </td>
-                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Limited by your home/office upload bandwidth</td>
+                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Must upload 100% first, then wait to download</td>
                 </tr>
                 <tr>
                   <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">Privacy & Security</td>
@@ -848,9 +882,9 @@ export default function HomePage() {
                   <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Server holds decryption keys & logs IP</td>
                 </tr>
                 <tr>
-                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">Price & Sign-up</td>
+                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">Price & Accounts</td>
                   <td className="p-4 sm:p-5 text-black dark:text-white font-medium">
-                    100% Free, no account, no email needed
+                    100% Free forever, no account, no email needed
                   </td>
                   <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Requires registration or paid plan</td>
                 </tr>

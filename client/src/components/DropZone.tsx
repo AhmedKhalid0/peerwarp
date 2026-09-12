@@ -151,48 +151,52 @@ export function DropZone({ onFilesSelected, disabled = false }: DropZoneProps) {
           <UploadCloud className="w-7 h-7" />
         </div>
 
-        <div className="space-y-2">
-          <h3 className="text-lg sm:text-xl font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight">
+        <div className="space-y-3 w-full">
+          <h3 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight">
             Drop files or entire folders here
           </h3>
-          <div className="flex items-center justify-center gap-3 text-sm">
+
+          <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto">
+            Drag & drop anything from your desktop, or click below to select
+          </p>
+
+          {/* Prominent Large Browse Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-3 w-full max-w-lg mx-auto">
             <button
               type="button"
               disabled={disabled}
               onClick={() => fileInputRef.current?.click()}
-              className="font-medium text-black dark:text-white hover:underline underline-offset-4 cursor-pointer"
+              className="w-full sm:w-auto flex-1 flex items-center justify-center gap-3 px-8 py-4 sm:px-9 sm:py-4.5 rounded-2xl bg-neutral-900 hover:bg-black text-white dark:bg-white dark:hover:bg-neutral-100 dark:text-neutral-950 font-extrabold text-base sm:text-lg shadow-md hover:shadow-lg transition-all scale-100 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             >
-              Browse Files
+              <UploadCloud className="w-6 h-6 shrink-0" />
+              <span>Browse Files</span>
             </button>
-            <span className="text-neutral-400 dark:text-neutral-600">•</span>
+
             <button
               type="button"
               disabled={disabled}
               onClick={() => folderInputRef.current?.click()}
-              className="inline-flex items-center gap-1 font-medium text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white hover:underline underline-offset-4 cursor-pointer"
+              className="w-full sm:w-auto flex-1 flex items-center justify-center gap-3 px-8 py-4 sm:px-9 sm:py-4.5 rounded-2xl border-2 border-neutral-300 dark:border-neutral-600 hover:border-neutral-900 dark:hover:border-white bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-900 dark:text-neutral-100 font-extrabold text-base sm:text-lg shadow-sm hover:shadow-md transition-all scale-100 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             >
-              <FolderUp className="w-3.5 h-3.5" />
-              Select Folder
+              <FolderUp className="w-6 h-6 shrink-0 text-neutral-700 dark:text-neutral-300" />
+              <span>Browse Folders</span>
             </button>
           </div>
-          <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
-            Supports 4K videos, raw archives, or folder trees up to 5 GB per file.
-          </p>
         </div>
 
         {/* Value badges */}
-        <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs">
-            <Zap className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
-            Up to 5 GB / File
+        <div className="pt-3 flex flex-wrap items-center justify-center gap-2.5 text-xs text-neutral-600 dark:text-neutral-400">
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs font-semibold">
+            <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            Unlimited File Size
           </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs">
-            <HardDrive className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs font-semibold">
+            <HardDrive className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
             Zero Cloud Storage
           </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs">
-            <Shield className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
-            E2E Encrypted
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs font-semibold">
+            <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            End-to-End Encrypted
           </span>
         </div>
       </div>
