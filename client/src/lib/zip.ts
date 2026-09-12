@@ -39,8 +39,11 @@ export async function createZipArchive(files: ZipFileEntry[]): Promise<Blob> {
   const textEncoder = new TextEncoder();
 
   for (const file of files) {
-    // Sanitize path (must use '/' and no leading '/')
-    const sanitizedName = file.name.replace(/\\/g, "/").replace(/^\/+/, "");
+    // Sanitize path against Zip Slip directory traversal (must use '/' and no '../' or leading '/')
+    const sanitizedName = file.name
+      .replace(/\\/g, "/")
+      .replace(/\.\.+[/\\]/g, "")
+      .replace(/^\/+/, "");
     const encodedName = textEncoder.encode(sanitizedName);
     const data = file.data;
     const size = data.length;
