@@ -63,12 +63,12 @@ function sleep(ms) {
     console.log("2. Opening Mobile on https://peerwarp.com...");
     await mobilePage.goto(BASE_URL, { waitUntil: "networkidle2" });
 
-    // Step 2: Switch both to Wi-Fi Radar tab
-    console.log("3. Switching both devices to 'Wi-Fi Radar' tab...");
-    const laptopRadarTab = await laptopPage.waitForSelector('button::-p-text("Wi-Fi Radar")');
+    // Step 2: Switch both to Wi-Fi Direct tab
+    console.log("3. Switching both devices to 'Wi-Fi Direct' tab...");
+    const laptopRadarTab = await laptopPage.waitForSelector('button::-p-text("Wi-Fi Direct")');
     await laptopRadarTab.click();
 
-    const mobileRadarTab = await mobilePage.waitForSelector('button::-p-text("Wi-Fi Radar")');
+    const mobileRadarTab = await mobilePage.waitForSelector('button::-p-text("Wi-Fi Direct")');
     await mobileRadarTab.click();
 
     // Step 3: Await mutual discovery

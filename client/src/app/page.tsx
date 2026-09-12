@@ -48,6 +48,27 @@ export default function HomePage() {
   const [joinCodeInput, setJoinCodeInput] = useState("");
   const [canInstallPwa, setCanInstallPwa] = useState(false);
   const [radarInvite, setRadarInvite] = useState<any | null>(null);
+  const MAX_WIFI_FILE_SIZE_BYTES = 50 * 1024 * 1024 * 1024; // 50 GB
+  const MAX_RELAY_FILE_SIZE_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB
+  const [sizeWarning, setSizeWarning] = useState<string | null>(null);
+
+  const handleFilesSelected = (newFiles: File[]) => {
+    setSizeWarning(null);
+    const oversized = newFiles.find((f) => f.size > MAX_WIFI_FILE_SIZE_BYTES);
+    if (oversized) {
+      alert(`The file "${oversized.name}" exceeds the maximum limit of 50 GB.`);
+      return;
+    }
+
+    const large = newFiles.find((f) => f.size > MAX_RELAY_FILE_SIZE_BYTES);
+    if (large) {
+      setSizeWarning(
+        `⚡ Note: "${large.name}" is over 5 GB. Files over 5 GB transfer at maximum hardware speed directly over local Wi-Fi up to 50 GB. Mobile / Cloud TURN relay is disabled for files over 5 GB.`
+      );
+    }
+
+    setSelectedFiles((prev) => [...prev, ...newFiles]);
+  };
 
   // Multi-user & Privacy settings
   const [maxRecipients, setMaxRecipients] = useState<number>(5);
@@ -255,6 +276,14 @@ export default function HomePage() {
         try {
           const currentRoute = await peerRef.current?.getActiveRoute();
           const isLocal = currentRoute?.isLocal ?? (routeInfo?.isLocal ?? true);
+          const isRelay = currentRoute?.type === "relay";
+
+          if (isRelay && current.file.size > MAX_RELAY_FILE_SIZE_BYTES) {
+            throw new Error(
+              `Transfer blocked: "${current.name}" exceeds the 5 GB mobile / cloud TURN relay limit. Connect both devices to the same Wi-Fi network to transfer up to 50 GB directly.`
+            );
+          }
+
           const finalSha256 = await streamer.sendFile(
             current.file,
             (update) => {
@@ -340,11 +369,11 @@ export default function HomePage() {
     },
     {
       q: "Is there any file size limit on PeerWarp?",
-      a: "No. PeerWarp has no artificial file size caps. Because files stream directly between peers in 64 KB micro-chunks without touching cloud disks, you can send small photos, large 4K video footage, or 50 GB+ archives without paying any fee.",
+      a: "On local Wi-Fi, you can transfer files up to 50 GB directly between devices with 0 KB internet data used and no cloud server relay. When transferring over mobile cellular networks or paths requiring our TURN relay, files are limited to 5 GB to protect mobile data quotas and server bandwidth.",
     },
     {
-      q: "How does the 1-Click Local Wi-Fi Radar (AirDrop) work?",
-      a: "Open the 'Wi-Fi Radar' tab on any devices sharing your local network. Devices appear automatically on the live radar screen without typing codes. Simply select a file and tap the device icon to transfer instantly across iPhone, Android, Mac, Windows, and Linux.",
+      q: "How does the Local Wi-Fi Direct Radar work?",
+      a: "Open the 'Wi-Fi Direct' tab on any devices connected to your local network. Devices appear automatically on the live radar screen without typing codes. Simply select a file and tap the device icon to transfer instantly across iPhone, Android, Mac, Windows, and Linux.",
     },
     {
       q: "How fast is direct P2P file transfer on PeerWarp?",
@@ -378,45 +407,6 @@ export default function HomePage() {
           PeerWarp streams videos, archives, and folders directly from your browser to another device using WebRTC.
           No cloud storage, no registration, and 100% free forever.
         </p>
-
-        {/* Platform Performance Metrics Strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 max-w-2xl mx-auto">
-          <div className="p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-center shadow-2xs">
-            <div className="text-xl sm:text-2xl font-black tracking-tight text-neutral-900 dark:text-neutral-50 font-mono">
-              0 MB
-            </div>
-            <div className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mt-0.5">
-              Cloud Storage Used
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-center shadow-2xs">
-            <div className="text-xl sm:text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400 font-mono">
-              0 KB
-            </div>
-            <div className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mt-0.5">
-              Internet Quota on Wi-Fi
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-center shadow-2xs">
-            <div className="text-xl sm:text-2xl font-black tracking-tight text-neutral-900 dark:text-neutral-50 font-mono">
-              500+ Mbps
-            </div>
-            <div className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mt-0.5">
-              Local Wi-Fi Throughput
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-center shadow-2xs">
-            <div className="text-xl sm:text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400 font-mono">
-              Unlimited
-            </div>
-            <div className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mt-0.5">
-              Max File Size Cap
-            </div>
-          </div>
-        </div>
       </section>
 
       {/* Main Mode Switcher (Send / Receive / Radar) */}
@@ -452,7 +442,7 @@ export default function HomePage() {
               }`}
             >
               <Radio className="w-3.5 h-3.5" />
-              <span>Wi-Fi Radar</span>
+              <span>Wi-Fi Direct</span>
             </button>
           </div>
 
@@ -479,9 +469,16 @@ export default function HomePage() {
           <div className="space-y-6">
             <DropZone
               onFilesSelected={(newFiles) => {
-                setSelectedFiles((prev) => [...prev, ...newFiles]);
+                handleFilesSelected(newFiles);
               }}
             />
+
+            {sizeWarning && (
+              <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/80 text-amber-800 dark:text-amber-300 text-xs shadow-2xs">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                <div className="leading-relaxed">{sizeWarning}</div>
+              </div>
+            )}
 
             {selectedFiles.length > 0 && (
               <div className="space-y-5">
@@ -698,7 +695,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* LOCAL RADAR TAB (AirDrop Style) */}
+        {/* LOCAL RADAR TAB (Wi-Fi Direct) */}
         {activeTab === "radar" && !roomId && (
           <LocalRadar
             selectedFiles={selectedFiles}
@@ -769,10 +766,10 @@ export default function HomePage() {
             </div>
             <div className="space-y-1.5">
               <h3 className="font-semibold text-base text-neutral-900 dark:text-neutral-100">
-                1-Click AirDrop Radar or Room Code
+                1-Click Wi-Fi Direct Radar or Room Code
               </h3>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                Discover nearby devices automatically on the Local Wi-Fi Radar, or share your high-entropy 8-character room code and instant QR code.
+                Discover nearby devices automatically on the Local Wi-Fi Direct Radar, or share your high-entropy 8-character room code and instant QR code.
               </p>
             </div>
             <div className="pt-2 text-[11px] text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5">
@@ -842,7 +839,7 @@ export default function HomePage() {
                 <tr>
                   <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">File Size Limits</td>
                   <td className="p-4 sm:p-5 text-black dark:text-white font-medium flex items-center gap-1.5">
-                    <Check className="w-4 h-4 text-emerald-600" /> Unlimited (1 GB, 20 GB, 50 GB+)
+                    <Check className="w-4 h-4 text-emerald-600" /> Up to 50 GB on Wi-Fi (5 GB on Mobile / TURN)
                   </td>
                   <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Capped at 2 GB free unless you pay monthly</td>
                 </tr>
@@ -863,7 +860,7 @@ export default function HomePage() {
                 <tr>
                   <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">Nearby Device Discovery</td>
                   <td className="p-4 sm:p-5 text-neutral-900 dark:text-neutral-200">
-                    1-Click Local Wi-Fi Radar (AirDrop-style)
+                    1-Click Local Wi-Fi Direct Radar
                   </td>
                   <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Requires typing email addresses or invite links</td>
                 </tr>

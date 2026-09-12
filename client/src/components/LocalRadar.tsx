@@ -120,7 +120,7 @@ export function LocalRadar({
     };
   }, []);
 
-  const triggerAirDropSend = async (peer: RadarPeer, files: File[]) => {
+  const triggerLocalSend = async (peer: RadarPeer, files: File[]) => {
     if (!files || files.length === 0) return;
     setConnectingPeerId(peer.peerId);
 
@@ -136,7 +136,7 @@ export function LocalRadar({
             ? files[0].name
             : `${files.length} files (${files[0].name}, ...)`;
 
-        console.log(`[AirDrop] Sending invite to ${peer.deviceInfo} for room ${newRoomId}`);
+        console.log(`[Wi-Fi Direct] Sending invite to ${peer.deviceInfo} for room ${newRoomId}`);
         socketRef.current.send(
           JSON.stringify({
             type: "radar_invite",
@@ -156,7 +156,7 @@ export function LocalRadar({
       // 4. Enter transfer mode with the pre-generated room ID and key
       await onSendToPeer(peer.peerId, peer.deviceInfo, files, newRoomId, secretKey);
     } catch (err) {
-      console.error("Failed to initiate AirDrop transfer:", err);
+      console.error("Failed to initiate Wi-Fi Direct transfer:", err);
       setConnectingPeerId(null);
     }
   };
@@ -164,9 +164,9 @@ export function LocalRadar({
   const handleDeviceClick = async (peer: RadarPeer) => {
     if (selectedFiles && selectedFiles.length > 0) {
       // Direct send with already queued files
-      await triggerAirDropSend(peer, selectedFiles);
+      await triggerLocalSend(peer, selectedFiles);
     } else {
-      // Trigger native file picker for this target device (AirDrop style)
+      // Trigger native file picker for this target device
       setPendingTargetPeer(peer);
       fileInputRef.current?.click();
     }
@@ -180,7 +180,7 @@ export function LocalRadar({
       }
       const target = pendingTargetPeer || (radarPeers.length > 0 ? radarPeers[0] : null);
       if (target) {
-        await triggerAirDropSend(target, files);
+        await triggerLocalSend(target, files);
         setPendingTargetPeer(null);
       }
     }
@@ -198,7 +198,7 @@ export function LocalRadar({
 
   return (
     <div className="space-y-6">
-      {/* Hidden file input for one-click AirDrop file selection */}
+      {/* Hidden file input for one-click local file selection */}
       <input
         ref={fileInputRef}
         type="file"
@@ -207,7 +207,7 @@ export function LocalRadar({
         className="hidden"
       />
 
-      {/* AirDrop Incoming Invite Alert Modal/Card */}
+      {/* Incoming Invite Alert Modal/Card */}
       {effectiveInvite && (
         <div className="rounded-2xl border-2 border-emerald-500/80 dark:border-emerald-400/80 bg-white dark:bg-neutral-900 p-6 sm:p-7 shadow-xl animate-in fade-in zoom-in-95">
           <div className="flex items-start gap-4">
@@ -217,7 +217,7 @@ export function LocalRadar({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                  AirDrop Request
+                  Wi-Fi Direct Request
                 </span>
                 <span className="text-xs text-neutral-400">• Local Wi-Fi</span>
               </div>
@@ -264,7 +264,7 @@ export function LocalRadar({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-base sm:text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-                Local Wi-Fi Radar (AirDrop Style)
+                Local Wi-Fi Direct Radar
               </h3>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />

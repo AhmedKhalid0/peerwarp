@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   keywords: [
     "P2P file transfer",
     "WebRTC file transfer",
-    "AirDrop alternative Windows",
+    "Wi-Fi Direct file transfer Windows",
     "WeTransfer free alternative",
     "send large files without upload",
     "direct device to device transfer",
