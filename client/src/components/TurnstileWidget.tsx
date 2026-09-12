@@ -40,9 +40,9 @@ export function TurnstileWidget({
   const widgetIdRef = useRef<string | null>(null);
   const [isScriptReady, setIsScriptReady] = useState(false);
 
-  // Cloudflare default test sitekey (always passes) or custom configured key
+  // Cloudflare Turnstile Site Key for peerwarp
   const siteKey =
-    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA";
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "0x4AAAAAAExnrH_MhcScBHUe";
 
   useEffect(() => {
     // 1. Inject Turnstile script if not already present

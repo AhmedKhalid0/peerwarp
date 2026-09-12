@@ -145,8 +145,8 @@ export default {
           });
         }
 
-        // Test keys or custom secret
-        const secretKey = env.TURNSTILE_SECRET_KEY || "1x0000000000000000000000000000000AA";
+        // Cloudflare Turnstile Secret Key for peerwarp
+        const secretKey = env.TURNSTILE_SECRET_KEY || "0x4AAAAAAExnrLJDqeWUSTU28sjeomT5Qeo";
         const verifyRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
