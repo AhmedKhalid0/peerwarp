@@ -8,7 +8,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-15.1_App_Router-black.svg?logo=next.js)](https://nextjs.org/)
 [![WebRTC](https://img.shields.io/badge/WebRTC-DataChannels-orange.svg?logo=webrtc)](https://webrtc.org/)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Durable_Objects-F38020.svg?logo=cloudflare)](https://workers.cloudflare.com/)
-[![TURN Server](https://img.shields.io/badge/COTURN-Hetzner_Node_TLS-d50c2d.svg?logo=hetzner)](https://peerwarp.com)
+[![TURN Relay](https://img.shields.io/badge/COTURN-Encrypted_Relay_TLS-10b981.svg)](https://peerwarp.com)
 [![PWA](https://img.shields.io/badge/PWA-Web_Share_Target-blueviolet.svg?logo=pwa)](https://peerwarp.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 [![Author](https://img.shields.io/badge/Author-Ahmed%20Algendy-indigo.svg)](https://ahmedalgendy.com)
@@ -56,7 +56,7 @@ PEERWARP P2P STREAMING (ZERO-HOP):
 | **Client-Side ZIP Bundler** | Zero-dependency PKWARE PKZIP 2.0 | Recipient can bundle all received files/folders into a `.zip` archive directly in memory. |
 | **Local Wi-Fi Radar (AirDrop-Style)**| Edge Public IP Hashing (`CF-Connecting-IP`) | Discover nearby peers on the same local network automatically with zero configuration. |
 | **PWA & OS Web Share Target** | Service Worker + `manifest.json` | Installable as a native app on Android/iOS; share directly from the OS Share Sheet. |
-| **Dedicated TURN Infrastructure** | Hetzner COTURN Node with TLS + Fail2ban | Traverses strict symmetric corporate NATs and mobile carriers when direct P2P is blocked. |
+| **Dedicated TURN Infrastructure** | Dedicated COTURN Node with TLS + Fail2ban | Traverses strict symmetric corporate NATs and mobile carriers when direct P2P is blocked. |
 | **Bit-for-Bit Verification** | Web Crypto Streaming SHA-256 | Cryptographically confirms data integrity before saving files to disk. |
 
 ---
@@ -87,9 +87,9 @@ flowchart TB
         RadarLobby["Subnet Hashed Radar Lobby (CF-Connecting-IP)"]
     end
 
-    subgraph HETZNER ["Hetzner Dedicated Relay Node"]
+    subgraph RELAY ["Dedicated Encrypted Relay Node"]
         COTURN["coturn Daemon (Ports 3478 / 5349 TLS)"]
-        Fail2ban["fail2ban SSH & Port Guard"]
+        Fail2ban["fail2ban Active Port & Abuse Guard"]
     end
 
     subgraph RECEIVERS ["Approved Recipient Devices (1-to-Many)"]
@@ -125,8 +125,8 @@ PeerWarp incorporates defense-in-depth security principles:
    - The sender sees the recipient's device profile (e.g. `iPhone (Safari)`) and must click **Accept** before any WebRTC SDP offer or data is exchanged.
 3. **Cloudflare Edge Rate Limiting**:
    - Any IP scanning rooms at a rate exceeding 25 requests/minute is blocked with HTTP 429.
-4. **Hetzner Host Hardening**:
-   - The dedicated TURN node (`turn.peerwarp.com`) runs `fail2ban` to ban malicious connection scanners at the Linux firewall level.
+4. **Relay Node Hardening**:
+   - The dedicated TURN relay node runs `fail2ban` and Linux firewall rules to ban malicious connection scanners and reject unauthenticated allocations.
 
 ---
 
@@ -173,7 +173,7 @@ Benchmarks conducted across local gigabit Wi-Fi 6 and consumer fiber broadband:
 - **Frontend Application**: Next.js 15 (App Router), React 19, TypeScript 5.7, Tailwind CSS.
 - **Real-Time WebRTC Engine**: W3C `RTCPeerConnection`, `RTCDataChannel`, W3C `FileSystemWritableFileStream`, `CompressionStream`.
 - **Global Signaling Infrastructure**: Cloudflare Workers, Cloudflare Durable Objects, Cloudflare Pages CDN.
-- **Dedicated TURN/STUN Node**: Ubuntu 24.04 on Hetzner Cloud, `coturn` (RFC 5766 / RFC 6156) with TLS on port 5349 + `fail2ban`.
+- **Dedicated TURN/STUN Node**: Hardened Ubuntu Linux node, `coturn` (RFC 5766 / RFC 6156) with TLS on port 5349 + `fail2ban`.
 - **Local / Self-Hosted Signaling**: Python 3.12, FastAPI, WebSockets, Uvicorn.
 - **Packaging & Delivery**: Progressive Web App (PWA), Web Share Target API, Docker Compose.
 

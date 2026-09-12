@@ -154,7 +154,7 @@ export default function PrivacyPage() {
             <p className="mb-2">PeerWarp relies on reputable, enterprise-grade cloud providers for real-time routing:</p>
             <ul className="list-disc pl-5 space-y-1 text-neutral-600 dark:text-neutral-400 text-xs">
               <li><strong>Cloudflare, Inc.:</strong> Hosts our static web assets, Edge Worker routing, and Turnstile bot protection.</li>
-              <li><strong>Hetzner Online GmbH:</strong> Hosts our dedicated Coturn STUN/TURN relay server used for NAT traversal when direct P2P connections cannot be established. Relay traffic is encrypted via DTLS/SRTP and relayed in real time without recording.</li>
+              <li><strong>Dedicated Relay Infrastructure:</strong> Hosts our encrypted Coturn STUN/TURN relay servers used for NAT traversal when direct P2P connections cannot be established. Relay traffic is encrypted via DTLS/SRTP and relayed in real time without recording.</li>
             </ul>
           </section>
 

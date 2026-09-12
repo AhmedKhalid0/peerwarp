@@ -35,7 +35,7 @@ flowchart TB
         DO_Hub --- RadarLobby
     end
 
-    subgraph HETZNER ["Dedicated TURN Infrastructure (Hetzner Cloud)"]
+    subgraph RELAY ["Dedicated TURN Infrastructure"]
         COTURN["coturn RFC 5766 / 6156 Relay (Ports 3478 & 5349 TLS)"]
         SecurityDaemon["fail2ban Active Port & Brute-Force Guard"]
         COTURN --- SecurityDaemon
@@ -161,6 +161,6 @@ When receiving directories or multi-file batches, the receiver generates a stand
      └───────────────┬───────────────┘
                      │ (If Symmetric NAT / Corporate Firewall blocks direct P2P)
                      ▼
-          [Relayed ICE Candidate (Hetzner COTURN)]
+          [Relayed ICE Candidate (COTURN Relay)]
           (Dedicated Encrypted Relay: Wire Speed up to 10 Gbps)
 ```

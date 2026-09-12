@@ -24,7 +24,7 @@ function createSampleFile(sizeMB = 1.5) {
 async function runScenario(scenarioName, forceRelayOnReceiver = false) {
   console.log(`\n======================================================================`);
   console.log(`🚀 STARTING TEST: ${scenarioName}`);
-  console.log(`📡 Mode: ${forceRelayOnReceiver ? "4G / Cellular (Forced TURN Relay via Hetzner)" : "Wi-Fi / LAN Direct P2P (Direct Host & STUN)"}`);
+  console.log(`📡 Mode: ${forceRelayOnReceiver ? "4G / Cellular (Forced Encrypted TURN Relay)" : "Wi-Fi / LAN Direct P2P (Direct Host & STUN)"}`);
   console.log(`======================================================================`);
 
   const tempFilePath = createSampleFile(1.2); // 1.2 MB test file
@@ -257,7 +257,7 @@ async function runSuite() {
   await sleep(3000);
 
   // 2. Run 4G / Cellular Relay
-  const cellResult = await runScenario("Case 2: 4G / Cellular (Forced Hetzner TURN Relay)", true);
+  const cellResult = await runScenario("Case 2: 4G / Cellular (Forced Encrypted TURN Relay)", true);
 
   console.log("\n======================================================================");
   console.log("🏆 FINAL PROTOCOL VERIFICATION REPORT");
