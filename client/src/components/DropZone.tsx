@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { UploadCloud, FolderUp, File, Shield, Zap, HardDrive, Wifi, Smartphone } from "lucide-react";
+import { UploadCloud, FolderUp, File, Shield, Zap, HardDrive, Lock, Globe } from "lucide-react";
+import { useLanguage } from "@/lib/i18n";
 
 interface DropZoneProps {
   onFilesSelected: (files: File[]) => void;
@@ -9,6 +10,7 @@ interface DropZoneProps {
 }
 
 export function DropZone({ onFilesSelected, disabled = false }: DropZoneProps) {
+  const { t } = useLanguage();
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -153,11 +155,11 @@ export function DropZone({ onFilesSelected, disabled = false }: DropZoneProps) {
 
         <div className="space-y-3 w-full">
           <h3 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight">
-            Drop files or entire folders here
+            {t("drop_drag_title")}
           </h3>
 
           <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto">
-            Drag & drop anything from your desktop, or click below to select
+            {t("drop_drag_subtitle")}
           </p>
 
           {/* Prominent Large Browse Buttons */}
@@ -169,7 +171,7 @@ export function DropZone({ onFilesSelected, disabled = false }: DropZoneProps) {
               className="w-full sm:w-auto flex-1 flex items-center justify-center gap-3 px-8 py-4 sm:px-9 sm:py-4.5 rounded-2xl bg-neutral-900 hover:bg-black text-white dark:bg-white dark:hover:bg-neutral-100 dark:text-neutral-950 font-extrabold text-base sm:text-lg shadow-md hover:shadow-lg transition-all scale-100 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             >
               <UploadCloud className="w-6 h-6 shrink-0" />
-              <span>Browse Files</span>
+              <span>{t("drop_browse_files")}</span>
             </button>
 
             <button
@@ -179,28 +181,28 @@ export function DropZone({ onFilesSelected, disabled = false }: DropZoneProps) {
               className="w-full sm:w-auto flex-1 flex items-center justify-center gap-3 px-8 py-4 sm:px-9 sm:py-4.5 rounded-2xl border-2 border-neutral-300 dark:border-neutral-600 hover:border-neutral-900 dark:hover:border-white bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-900 dark:text-neutral-100 font-extrabold text-base sm:text-lg shadow-sm hover:shadow-md transition-all scale-100 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             >
               <FolderUp className="w-6 h-6 shrink-0 text-neutral-700 dark:text-neutral-300" />
-              <span>Browse Folders</span>
+              <span>{t("drop_browse_folders")}</span>
             </button>
           </div>
         </div>
 
-        {/* Value badges */}
+        {/* Modern Value Badges */}
         <div className="pt-3 flex flex-wrap items-center justify-center gap-2.5 text-xs text-neutral-600 dark:text-neutral-400">
           <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs font-semibold text-neutral-900 dark:text-neutral-100">
             <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            Up to 50 GB Direct
+            {t("badge_no_limits")}
           </span>
           <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs font-semibold">
-            <Smartphone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            Up to 5 GB on Mobile Data
+            <HardDrive className="w-4 h-4 text-neutral-700 dark:text-neutral-300" />
+            {t("badge_zero_storage")}
           </span>
           <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs font-semibold">
-            <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            Zero Cloud Storage
+            <Lock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            {t("badge_encrypted")}
           </span>
           <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs font-semibold">
-            <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            End-to-End Encrypted
+            <Globe className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            {t("badge_free_open_source")}
           </span>
         </div>
       </div>

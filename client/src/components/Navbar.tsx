@@ -3,9 +3,11 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
-import { Sun, Moon, Github, ShieldCheck } from "lucide-react";
+import { Sun, Moon, Github, ShieldCheck, Languages } from "lucide-react";
+import { useLanguage } from "@/lib/i18n";
 
 export function Navbar() {
+  const { lang, setLang, t } = useLanguage();
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
@@ -44,19 +46,19 @@ export function Navbar() {
             href="#how-it-works"
             className="hover:text-black dark:hover:text-white transition-colors"
           >
-            How It Works
+            {t("nav_how_it_works")}
           </a>
           <a
             href="#why-peerwarp"
             className="hover:text-black dark:hover:text-white transition-colors"
           >
-            Why PeerWarp
+            {t("nav_why_peerwarp")}
           </a>
           <a
             href="#faq"
             className="hover:text-black dark:hover:text-white transition-colors"
           >
-            FAQ
+            {t("nav_faq")}
           </a>
         </nav>
 
@@ -65,14 +67,24 @@ export function Navbar() {
           {/* Privacy badge */}
           <div className="hidden lg:flex items-center gap-1.5 text-xs text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-900 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-800">
             <ShieldCheck className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
-            <span>End-to-End Encrypted</span>
+            <span>{t("nav_encrypted")}</span>
           </div>
+
+          {/* Language Toggle */}
+          <button
+            onClick={() => setLang(lang === "en" ? "ar" : "en")}
+            aria-label="Toggle language"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:text-black dark:hover:text-white bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200/70 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 transition-all cursor-pointer"
+          >
+            <Languages className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
+            <span>{t("nav_lang_toggle")}</span>
+          </button>
 
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
             aria-label="Toggle theme"
-            className="p-2 rounded-lg text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900 border border-transparent hover:border-neutral-200 dark:hover:border-neutral-800 transition-all"
+            className="p-2 rounded-lg text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900 border border-transparent hover:border-neutral-200 dark:hover:border-neutral-800 transition-all cursor-pointer"
           >
             {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
           </button>

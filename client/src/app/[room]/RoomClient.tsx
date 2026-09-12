@@ -24,6 +24,7 @@ import { wakeLock } from "@/lib/wakelock";
 import { supportsFileSystemAccess, createDirectFileWriter } from "@/lib/filesystem";
 import { createZipArchive, downloadBlob, ZipFileEntry } from "@/lib/zip";
 import { formatBytes } from "@/lib/crypto";
+import { playTransferSuccessChime } from "@/lib/sound";
 
 interface RoomClientProps {
   initialRoom: string;
@@ -248,7 +249,8 @@ export default function RoomClient({ initialRoom }: RoomClientProps) {
             setReceivedFiles((prev) => [...prev.filter((f) => f.id !== completedItem.id), completedItem]);
             setConnectionStatus("completed");
 
-            // Confetti celebration on completion
+            // Confetti and chime celebration on completion
+            playTransferSuccessChime();
             try {
               confetti({
                 particleCount: 90,

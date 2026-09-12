@@ -41,8 +41,11 @@ import { FileTransferItem, RecipientPeer } from "@/types/protocol";
 import { wakeLock } from "@/lib/wakelock";
 import { generateShortRoomCode, generateEphemeralKey } from "@/lib/id";
 import { initPwaInstallPrompt, promptPwaInstall, getAndClearSharedFiles } from "@/lib/pwa";
+import { playTransferSuccessChime } from "@/lib/sound";
+import { useLanguage } from "@/lib/i18n";
 
 export default function HomePage() {
+  const { t, isRTL, lang } = useLanguage();
   const [activeTab, setActiveTab] = useState<"send" | "receive" | "radar">("send");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [joinCodeInput, setJoinCodeInput] = useState("");
@@ -328,7 +331,8 @@ export default function HomePage() {
       wakeLock.release();
     }
 
-    // Trigger celebration confetti on all files completed
+    // Trigger celebration confetti and audio chime on all files completed
+    playTransferSuccessChime();
     try {
       confetti({
         particleCount: 80,
@@ -356,7 +360,36 @@ export default function HomePage() {
     setTransferItems([]);
   };
 
-  const faqs = [
+  const faqs = lang === "ar" ? [
+    {
+      q: "أين يتم رفع ملفاتي في PeerWarp؟",
+      a: "لا يتم رفعها في أي مكان! يستخدم PeerWarp تقنية WebRTC لإنشاء جسر اتصالات مباشر ومشفر من متصفحك إلى متصفح الطرف الآخر. تتدفق الملفات مباشرة من ذاكرة الجهاز إلى الجهاز الآخر دون أن تُخزن على أي خادم سحابي إطلاقاً.",
+    },
+    {
+      q: "هل يستهلك نقل الملفات على نفس شبكة الواي فاي من باقة الإنترنت؟",
+      a: "صفر كيلوبايت! عندما يكون الجهازان متصلين بنفس شبكة الواي فاي، يؤسس WebRTC اتصالاً محلياً مباشراً (LAN). يتم النقل بسرعة عتاد الراوتر وتصل إلى 500+ ميجابت/ثانية، دون استهلاك باقة الإنترنت المنزلية أو باقة الموبايل.",
+    },
+    {
+      q: "هل هناك أي حد أقصى لحجم الملف في PeerWarp؟",
+      a: "لا توجد أي قيود مصطنعة على الحجم! يقوم PeerWarp بتقسيم الملفات إلى أجزاء دقيقة ونقلها فورياً عبر قنوات WebRTC. نظراً لعدم حفظ الملفات في خوادم سحابية، يمكنك إرسال فيديوهات 4K ضخمة، ملفات مضغوطة، أو نسخ احتياطية بكل حرية.",
+    },
+    {
+      q: "كيف يعمل رادار الواي فاي المباشر (Wi-Fi Direct)؟",
+      a: "افتح تبويب 'رادار الواي فاي المباشر' في الأجهزة المتصلة بنفس الشبكة. ستظهر الأجهزة القريبة تلقائياً على شاشة الرادار دون الحاجة لكتابة رموز. اختر الملف واضغط على أيقونة الجهاز ليتم النقل فورياً.",
+    },
+    {
+      q: "ما مدى سرعة النقل المباشر عبر PeerWarp؟",
+      a: "على شبكة الواي فاي المحلية، تصل السرعات إلى أقصى سرعة ممكنة لعتاد الراوتر (حتى 60-80+ ميجابايت/ثانية). وعند النقل عبر الإنترنت أو شبكات الجوال، يقوم PeerWarp بتحسين تدفق البيانات مع استخدام خادم الترحيل العالمي عند الحاجة.",
+    },
+    {
+      q: "هل يحتاج الطرف الآخر لتثبيت برنامج أو إنشاء حساب؟",
+      a: "لا حاجة لتثبيت أي تطبيق أو إدخال بريد إلكتروني. يعمل PeerWarp مباشرة داخل أي متصفح حديث (Chrome, Safari, Firefox, Edge) على هواتف آيفون وأندرويد وأجهزة الكمبيوتر.",
+    },
+    {
+      q: "هل يستطيع أي طرف ثالث اعتراض ملفاتي أو التجسس عليها؟",
+      a: "مستحيل. جميع عمليات النقل مشفرة نظير-إلى-نظير بواسطة بروتوكولات DTLS 1.3 و SCTP. بالإضافة إلى ذلك، يحسب PeerWarp بصمة تشفير SHA-256 أثناء النقل للتحقق التام من سلامة الملف ومطابقته 100%.",
+    },
+  ] : [
     {
       q: "Where do my files get uploaded on PeerWarp?",
       a: "Nowhere. PeerWarp uses WebRTC to establish a direct cryptographic peer-to-peer bridge between your browser and the recipient's browser. Files stream directly memory-to-memory and are never uploaded to any cloud server or staged on third-party disks.",
@@ -393,17 +426,16 @@ export default function HomePage() {
       <section className="text-center space-y-4 max-w-2xl mx-auto">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-xs font-medium text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
           <span className="w-1.5 h-1.5 rounded-full bg-neutral-900 dark:bg-neutral-100" />
-          <span>Zero Cloud Storage • Direct Device-to-Device</span>
+          <span>{t("hero_badge")}</span>
         </div>
 
         <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50">
-          Send Large Files Directly. <br className="hidden sm:inline" />
-          No Cloud Uploads. No Size Limits.
+          {t("hero_title_1")} <br className="hidden sm:inline" />
+          {t("hero_title_2")}
         </h1>
 
         <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-400 leading-relaxed max-w-xl mx-auto">
-          Stream files of any size directly from your browser to another device using WebRTC.
-          Zero cloud storage, no account required, and 100% free forever.
+          {t("hero_subtitle")}
         </p>
       </section>
 
@@ -419,7 +451,7 @@ export default function HomePage() {
                   : "text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white"
               }`}
             >
-              Send Files
+              {t("tab_send")}
             </button>
             <button
               onClick={() => setActiveTab("receive")}
@@ -429,7 +461,7 @@ export default function HomePage() {
                   : "text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white"
               }`}
             >
-              Receive Files
+              {t("tab_receive")}
             </button>
             <button
               id="tab-radar"
@@ -441,7 +473,7 @@ export default function HomePage() {
               }`}
             >
               <Radio className="w-3.5 h-3.5" />
-              <span>Wi-Fi Direct</span>
+              <span>{t("tab_radar")}</span>
             </button>
           </div>
 
@@ -455,7 +487,7 @@ export default function HomePage() {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-xs font-medium text-neutral-700 dark:text-neutral-300 transition-colors shadow-2xs cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Install App</span>
+              <span>{lang === "ar" ? "تثبيت التطبيق" : "Install App"}</span>
             </button>
           )}
         </div>
@@ -495,10 +527,10 @@ export default function HomePage() {
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-800 dark:text-neutral-200">
                         <Users className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
-                        <span>Maximum Allowed Recipients</span>
+                        <span>{t("multi_recipients_label")}</span>
                       </div>
                       <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                        How many colleagues can download simultaneously with this link.
+                        {t("multi_recipients_desc")}
                       </p>
                     </div>
 
@@ -556,10 +588,10 @@ export default function HomePage() {
                     <div className="space-y-0.5">
                       <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
                         <Lock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                        <span>Knock-to-Join Gate (Human Verification)</span>
+                        <span>{t("knock_gate_title")}</span>
                       </span>
                       <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                        Shows an instant popup asking you to Accept/Decline whenever an unfamiliar device attempts to join.
+                        {t("knock_gate_desc")}
                       </p>
                     </div>
                   </label>
@@ -568,10 +600,10 @@ export default function HomePage() {
                 <div className="flex justify-center">
                   <button
                     onClick={() => handleStartSending()}
-                    className="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-black hover:bg-neutral-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-black font-semibold text-sm sm:text-base shadow-xs hover:shadow transition-all scale-100 hover:scale-[1.01] active:scale-[0.99]"
+                    className="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-black hover:bg-neutral-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-black font-semibold text-sm sm:text-base shadow-xs hover:shadow transition-all scale-100 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                   >
-                    <span>Create Transfer Room & QR Code</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <span>{t("btn_create_room")}</span>
+                    <ArrowRight className={`w-4 h-4 ${isRTL ? "rotate-180" : ""}`} />
                   </button>
                 </div>
               </div>
@@ -665,10 +697,10 @@ export default function HomePage() {
 
             <div className="space-y-1">
               <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
-                Enter Room Code
+                {t("recv_join_title")}
               </h2>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                Type the 6-character code shown on the sender screen.
+                {t("recv_join_subtitle")}
               </p>
             </div>
 
@@ -677,18 +709,19 @@ export default function HomePage() {
                 type="text"
                 value={joinCodeInput}
                 onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
-                placeholder="e.g. WARP-482"
+                placeholder="WARP-482"
                 maxLength={8}
+                aria-label={t("recv_input_label")}
                 className="w-full text-center text-xl font-mono uppercase tracking-widest px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-600"
               />
 
               <button
                 type="submit"
                 disabled={!joinCodeInput.trim()}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-black hover:bg-neutral-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-black font-semibold text-sm shadow-xs transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-black hover:bg-neutral-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-black font-semibold text-sm shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
               >
-                <span>Connect & Download</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>{t("recv_btn_connect")}</span>
+                <ArrowRight className={`w-4 h-4 ${isRTL ? "rotate-180" : ""}`} />
               </button>
             </form>
           </div>
@@ -717,21 +750,21 @@ export default function HomePage() {
 
         {/* Legal Disclaimer & User Responsibility Trust Notice */}
         <div className="mt-4 text-center text-xs text-neutral-500 dark:text-neutral-400">
-          <span>By transferring or receiving files, you agree to our </span>
+          <span>{t("legal_agree_prefix")} </span>
           <a
             href="/terms"
             className="font-medium text-neutral-800 dark:text-neutral-200 underline hover:text-indigo-600 dark:hover:text-indigo-400"
           >
-            Terms of Use & Legal Disclaimer
+            {t("legal_terms_link")}
           </a>
-          <span> and </span>
+          <span> {t("legal_and")} </span>
           <a
             href="/privacy"
             className="font-medium text-neutral-800 dark:text-neutral-200 underline hover:text-indigo-600 dark:hover:text-indigo-400"
           >
-            Privacy Policy
+            {t("legal_privacy_link")}
           </a>
-          <span>. Transfers are direct P2P; users bear sole responsibility for content.</span>
+          <span>. {t("legal_agree_suffix")}</span>
         </div>
       </div>
 
@@ -741,13 +774,13 @@ export default function HomePage() {
       <section id="how-it-works" className="pt-8 border-t border-neutral-200 dark:border-neutral-800 space-y-10">
         <div className="text-center space-y-2 max-w-xl mx-auto">
           <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-            Simple & Transparent
+            {t("steps_badge")}
           </span>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-            How PeerWarp Works in 3 Steps
+            {t("steps_title")}
           </h2>
           <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
-            No software installation or registration. Transfer directly from your laptop to a phone or friend in seconds.
+            {t("steps_subtitle")}
           </p>
         </div>
 
@@ -762,15 +795,15 @@ export default function HomePage() {
             </div>
             <div className="space-y-1.5">
               <h3 className="font-semibold text-base text-neutral-900 dark:text-neutral-100">
-                Choose Files or Full Folders
+                {t("step1_title")}
               </h3>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                Drag and drop photos, 4K video footage, 50 GB+ zip archives, or pick entire directory trees using our large Browse buttons. No file size restrictions.
+                {t("step1_desc")}
               </p>
             </div>
             <div className="pt-2 text-[11px] text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5">
               <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>0 MB Cloud Storage • 100% In-Browser</span>
+              <span>{lang === "ar" ? "0 ميجابايت تخزين سحابي • في المتصفح 100%" : "0 MB Cloud Storage • 100% In-Browser"}</span>
             </div>
           </article>
 
@@ -784,15 +817,15 @@ export default function HomePage() {
             </div>
             <div className="space-y-1.5">
               <h3 className="font-semibold text-base text-neutral-900 dark:text-neutral-100">
-                1-Click Wi-Fi Direct Radar or Room Code
+                {t("step2_title")}
               </h3>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                Discover nearby devices automatically on the Local Wi-Fi Direct Radar, or share your high-entropy 8-character room code and instant QR code.
+                {t("step2_desc")}
               </p>
             </div>
             <div className="pt-2 text-[11px] text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5">
               <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Cross-platform (iOS, Android, Windows, Mac, Linux)</span>
+              <span>{lang === "ar" ? "يعمل على كافة الأنظمة (iOS, Android, Windows, Mac, Linux)" : "Cross-platform (iOS, Android, Windows, Mac, Linux)"}</span>
             </div>
           </article>
 
@@ -806,15 +839,15 @@ export default function HomePage() {
             </div>
             <div className="space-y-1.5">
               <h3 className="font-semibold text-base text-neutral-900 dark:text-neutral-100">
-                Direct Hardware-Speed Streaming
+                {t("step3_title")}
               </h3>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                Data streams memory-to-memory via encrypted WebRTC at up to 500+ Mbps on local Wi-Fi with 0 KB internet quota used and SHA-256 integrity verification.
+                {t("step3_desc")}
               </p>
             </div>
             <div className="pt-2 text-[11px] text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5">
               <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Up to 500+ Mbps • End-to-End DTLS 1.3 Encrypted</span>
+              <span>{lang === "ar" ? "سرعة تصل إلى 500+ ميجابت • تشفير DTLS 1.3" : "Up to 500+ Mbps • End-to-End DTLS 1.3 Encrypted"}</span>
             </div>
           </article>
         </div>
@@ -826,82 +859,126 @@ export default function HomePage() {
       <section id="why-peerwarp" className="space-y-8">
         <div className="text-center space-y-2 max-w-xl mx-auto">
           <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-            Comparison
+            {lang === "ar" ? "مقارنة شاملة" : "Comparison"}
           </span>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-            Why Choose PeerWarp?
+            {lang === "ar" ? "لماذا تختار PeerWarp؟" : "Why Choose PeerWarp?"}
           </h2>
           <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
-            Compare direct peer-to-peer streaming with traditional cloud upload platforms.
+            {lang === "ar"
+              ? "قارن بين البث المباشر نظير-إلى-نظير ومنصات الرفع السحابية التقليدية."
+              : "Compare direct peer-to-peer streaming with traditional cloud upload platforms."}
           </p>
         </div>
 
         <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs sm:text-sm">
+            <table className="w-full text-left rtl:text-right border-collapse text-xs sm:text-sm">
               <thead>
                 <tr className="border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/60">
-                  <th className="p-4 sm:p-5 font-semibold text-neutral-900 dark:text-neutral-100">Feature</th>
-                  <th className="p-4 sm:p-5 font-semibold text-neutral-900 dark:text-neutral-100">PeerWarp (P2P)</th>
-                  <th className="p-4 sm:p-5 font-medium text-neutral-500 dark:text-neutral-400">WeTransfer / Google Drive</th>
+                  <th className="p-4 sm:p-5 font-semibold text-neutral-900 dark:text-neutral-100">
+                    {lang === "ar" ? "الميزة" : "Feature"}
+                  </th>
+                  <th className="p-4 sm:p-5 font-semibold text-neutral-900 dark:text-neutral-100">
+                    {lang === "ar" ? "PeerWarp (مباشر P2P)" : "PeerWarp (P2P)"}
+                  </th>
+                  <th className="p-4 sm:p-5 font-medium text-neutral-500 dark:text-neutral-400">
+                    {lang === "ar" ? "WeTransfer / Google Drive" : "WeTransfer / Google Drive"}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 text-neutral-600 dark:text-neutral-400">
                 <tr>
-                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">File Storage</td>
-                  <td className="p-4 sm:p-5 text-black dark:text-white font-medium flex items-center gap-1.5">
-                    <Check className="w-4 h-4 text-emerald-600" /> Zero cloud storage (100% memory streaming)
+                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">
+                    {lang === "ar" ? "تخزين الملفات" : "File Storage"}
                   </td>
-                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Stored on 3rd-party servers for days/weeks</td>
+                  <td className="p-4 sm:p-5 text-black dark:text-white font-medium flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-emerald-600" />
+                    {lang === "ar" ? "صفر تخزين سحابي (بث مباشر من الذاكرة)" : "Zero cloud storage (100% memory streaming)"}
+                  </td>
+                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">
+                    {lang === "ar" ? "تُخزن في سيرفرات وسيطة لأيام وأسابيع" : "Stored on 3rd-party servers for days/weeks"}
+                  </td>
                 </tr>
                 <tr>
-                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">File Size Limits</td>
-                  <td className="p-4 sm:p-5 text-black dark:text-white font-medium flex items-center gap-1.5">
-                    <Check className="w-4 h-4 text-emerald-600" /> No artificial limits (Stream any file size)
+                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">
+                    {lang === "ar" ? "حد أقصى لحجم الملف" : "File Size Limits"}
                   </td>
-                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Capped at 2 GB free unless you pay monthly</td>
+                  <td className="p-4 sm:p-5 text-black dark:text-white font-medium flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-emerald-600" />
+                    {lang === "ar" ? "بلا حدود مصطنعة (أرسل أي حجم)" : "No artificial limits (Stream any file size)"}
+                  </td>
+                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">
+                    {lang === "ar" ? "محدود بـ 2 جيجابايت مجاناً ثم اشتراك شهري" : "Capped at 2 GB free unless you pay monthly"}
+                  </td>
                 </tr>
                 <tr>
-                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">Local Wi-Fi Speed</td>
-                  <td className="p-4 sm:p-5 text-black dark:text-white font-medium flex items-center gap-1.5">
-                    <Check className="w-4 h-4 text-emerald-600" /> Up to 500+ Mbps (Hardware LAN speed)
+                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">
+                    {lang === "ar" ? "سرعة الواي فاي المحلي" : "Local Wi-Fi Speed"}
                   </td>
-                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Limited by home/office ISP upload bandwidth</td>
+                  <td className="p-4 sm:p-5 text-black dark:text-white font-medium flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-emerald-600" />
+                    {lang === "ar" ? "تصل إلى 500+ ميجابت (سرعة الراوتر الداخلية)" : "Up to 500+ Mbps (Hardware LAN speed)"}
+                  </td>
+                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">
+                    {lang === "ar" ? "محدود بسرعة الرفع الضعيفة للإنترنت" : "Limited by home/office ISP upload bandwidth"}
+                  </td>
                 </tr>
                 <tr>
-                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">Internet Quota on Wi-Fi</td>
+                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">
+                    {lang === "ar" ? "استهلاك باقة الإنترنت" : "Internet Quota on Wi-Fi"}
+                  </td>
                   <td className="p-4 sm:p-5 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
-                    <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> 0 KB consumed (transfers locally)
+                    <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    {lang === "ar" ? "0 كيلوبايت مستهلكة (نقل محلي تام)" : "0 KB consumed (transfers locally)"}
                   </td>
-                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Double quota consumed (upload + download)</td>
+                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">
+                    {lang === "ar" ? "استهلاك مضاعف للباقة (رفع ثم تنزيل)" : "Double quota consumed (upload + download)"}
+                  </td>
                 </tr>
                 <tr>
-                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">Nearby Device Discovery</td>
+                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">
+                    {lang === "ar" ? "اكتشاف الأجهزة القريبة" : "Nearby Device Discovery"}
+                  </td>
                   <td className="p-4 sm:p-5 text-neutral-900 dark:text-neutral-200">
-                    1-Click Local Wi-Fi Direct Radar
+                    {lang === "ar" ? "رادار الواي فاي المباشر بضغطة واحدة" : "1-Click Local Wi-Fi Direct Radar"}
                   </td>
-                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Requires typing email addresses or invite links</td>
+                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">
+                    {lang === "ar" ? "يتطلب إدخال إيميلات أو روابط مطولة" : "Requires typing email addresses or invite links"}
+                  </td>
                 </tr>
                 <tr>
-                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">Transfer Flow</td>
+                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">
+                    {lang === "ar" ? "آلية النقل والتحميل" : "Transfer Flow"}
+                  </td>
                   <td className="p-4 sm:p-5 text-neutral-900 dark:text-neutral-200">
-                    Direct stream: receiver downloads immediately
+                    {lang === "ar" ? "بث فوري: المستلم يحمل أثناء الإرسال" : "Direct stream: receiver downloads immediately"}
                   </td>
-                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Must upload 100% first, then wait to download</td>
+                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">
+                    {lang === "ar" ? "يجب رفع الملف بنسبة 100% أولاً ثم الانتظار للتحميل" : "Must upload 100% first, then wait to download"}
+                  </td>
                 </tr>
                 <tr>
-                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">Privacy & Security</td>
-                  <td className="p-4 sm:p-5 text-black dark:text-white font-medium">
-                    End-to-End DTLS 1.3 encryption + SHA-256
+                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">
+                    {lang === "ar" ? "الخصوصية والأمان" : "Privacy & Security"}
                   </td>
-                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Server holds decryption keys & logs IP</td>
+                  <td className="p-4 sm:p-5 text-black dark:text-white font-medium">
+                    {lang === "ar" ? "تشفير DTLS 1.3 كامل + فحص SHA-256" : "End-to-End DTLS 1.3 encryption + SHA-256"}
+                  </td>
+                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">
+                    {lang === "ar" ? "الخوادم تمتلك مفاتيح فك التشفير وتسجل الآي بي" : "Server holds decryption keys & logs IP"}
+                  </td>
                 </tr>
                 <tr>
-                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">Price & Accounts</td>
-                  <td className="p-4 sm:p-5 text-black dark:text-white font-medium">
-                    100% Free forever, no account, no email needed
+                  <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">
+                    {lang === "ar" ? "السعر والحسابات" : "Price & Accounts"}
                   </td>
-                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Requires registration or paid plan</td>
+                  <td className="p-4 sm:p-5 text-black dark:text-white font-medium">
+                    {lang === "ar" ? "مجاني 100% للأبد، بدون حساب أو تسجيل" : "100% Free forever, no account, no email needed"}
+                  </td>
+                  <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">
+                    {lang === "ar" ? "يتطلب تسجيل حساب أو اشتراكات مدفوعة" : "Requires registration or paid plan"}
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -915,13 +992,15 @@ export default function HomePage() {
       <section id="faq" className="space-y-8">
         <div className="text-center space-y-2 max-w-xl mx-auto">
           <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-            Clear Answers
+            {lang === "ar" ? "إجابات واضحة" : "Clear Answers"}
           </span>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-            Frequently Asked Questions
+            {lang === "ar" ? "الأسئلة الأكثر شيوعاً" : "Frequently Asked Questions"}
           </h2>
           <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
-            Common questions about safety, privacy, and how PeerWarp transfers files.
+            {lang === "ar"
+              ? "أسئلة شائعة حول الأمان، الخصوصية، وطريقة عمل نقل الملفات في PeerWarp."
+              : "Common questions about safety, privacy, and how PeerWarp transfers files."}
           </p>
         </div>
 
@@ -935,7 +1014,7 @@ export default function HomePage() {
               >
                 <button
                   onClick={() => setOpenFaq(isOpen ? null : index)}
-                  className="w-full text-left px-6 py-4 flex items-center justify-between gap-4 font-semibold text-sm sm:text-base text-neutral-900 dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors"
+                  className="w-full text-left rtl:text-right px-6 py-4 flex items-center justify-between gap-4 font-semibold text-sm sm:text-base text-neutral-900 dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors cursor-pointer"
                 >
                   <span>{faq.q}</span>
                   <ChevronDown
@@ -955,42 +1034,30 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer / Trust Guarantee */}
-      <footer className="pt-12 border-t border-neutral-200 dark:border-neutral-800 text-center space-y-4">
+      {/* Trust Guarantee Section */}
+      <section className="pt-12 border-t border-neutral-200 dark:border-neutral-800 text-center space-y-4">
         <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-neutral-500 dark:text-neutral-400">
           <span className="flex items-center gap-1.5">
             <Shield className="w-3.5 h-3.5" />
-            Zero Data Stored
+            {lang === "ar" ? "صفر بيانات محفوظة" : "Zero Data Stored"}
           </span>
           <span>•</span>
           <span className="flex items-center gap-1.5">
             <Lock className="w-3.5 h-3.5" />
-            DTLS 1.3 / SCTP Encrypted
+            {lang === "ar" ? "تشفير DTLS 1.3 / SCTP" : "DTLS 1.3 / SCTP Encrypted"}
           </span>
           <span>•</span>
           <span className="flex items-center gap-1.5">
             <Cpu className="w-3.5 h-3.5" />
-            64KB Micro-Chunking
+            {lang === "ar" ? "تقطيع دقيق 64KB" : "64KB Micro-Chunking"}
           </span>
           <span>•</span>
           <span className="flex items-center gap-1.5">
             <Globe className="w-3.5 h-3.5" />
-            100% Free Open Source
+            {lang === "ar" ? "مفتوح المصدر 100%" : "100% Free Open Source"}
           </span>
         </div>
-        <p className="text-[11px] text-neutral-400 dark:text-neutral-500 max-w-2xl mx-auto leading-relaxed">
-          PeerWarp is an open-source peer-to-peer file streaming web application engineered by{" "}
-          <a
-            href="https://ahmedalgendy.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-neutral-600 dark:text-neutral-300 hover:underline font-medium"
-          >
-            Ahmed Algendy
-          </a>
-          . All transfers operate as direct P2P conduits with zero server storage. Users bear sole and exclusive legal responsibility for all transmitted content.
-        </p>
-      </footer>
+      </section>
     </div>
   );
 }

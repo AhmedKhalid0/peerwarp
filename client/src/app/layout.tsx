@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
+import { LanguageProvider } from "@/lib/i18n";
 
 const siteUrl = "https://peerwarp.com";
 const title = "PeerWarp — Send Large Files Directly with No Size Limits";
@@ -180,45 +182,11 @@ export default function RootLayout({
         />
       </head>
       <body className="flex flex-col min-h-screen bg-white dark:bg-black text-neutral-900 dark:text-neutral-100 antialiased">
-        <Navbar />
-
-        <main className="flex-1 flex flex-col">{children}</main>
-
-        <footer className="border-t border-neutral-200 dark:border-neutral-800 py-8 bg-neutral-50 dark:bg-neutral-950 text-xs text-neutral-500 dark:text-neutral-400">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 sm:gap-3">
-              <span className="font-semibold text-neutral-900 dark:text-neutral-100">PeerWarp</span>
-              <span>•</span>
-              <a
-                href="/privacy"
-                className="hover:text-neutral-900 dark:hover:text-neutral-100 hover:underline transition-colors"
-              >
-                Privacy Policy
-              </a>
-              <span>•</span>
-              <a
-                href="/terms"
-                className="hover:text-neutral-900 dark:hover:text-neutral-100 hover:underline transition-colors"
-              >
-                Terms of Use & Legal Disclaimer
-              </a>
-              <span>•</span>
-              <span>MIT License</span>
-            </div>
-
-            <div className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400">
-              <span>Engineered by</span>
-              <a
-                href="https://ahmedalgendy.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-black dark:text-white hover:underline"
-              >
-                Ahmed Algendy
-              </a>
-            </div>
-          </div>
-        </footer>
+        <LanguageProvider>
+          <Navbar />
+          <main className="flex-1 flex flex-col">{children}</main>
+          <Footer />
+        </LanguageProvider>
         <script
           dangerouslySetInnerHTML={{
             __html: `
