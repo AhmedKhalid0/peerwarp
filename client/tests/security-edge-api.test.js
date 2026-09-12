@@ -42,7 +42,7 @@ async function run() {
   if (isNaN(expiryTimestamp) || expiryTimestamp <= now) {
     throw new Error(`Expired or invalid timestamp in TURN username: ${turnServer.username}`);
   }
-  console.log("  ✅ Ephemeral HMAC-SHA1 TURN credentials successfully minted (TTL 3600s).");
+  console.log("  ✅ Ephemeral HMAC-SHA1 TURN credentials successfully minted (TTL 43200s / 12h).");
 
   // 3. Radar / Local Wi-Fi exemption verification
   const radarRoom = "RADAR_" + Math.random().toString(36).substring(2, 7).toUpperCase();

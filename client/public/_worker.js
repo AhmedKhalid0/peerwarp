@@ -30,7 +30,7 @@ function isRateLimited(tracker, ip, maxLimit, windowMs) {
 }
 
 async function generateTurnCredentials(roomId, secretKey) {
-  const expiry = Math.floor(Date.now() / 1000) + 3600; // 1 hour validity
+  const expiry = Math.floor(Date.now() / 1000) + 43200; // 12 hours validity (supports massive multi-hour transfers)
   const username = `${expiry}:${roomId}`;
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -69,7 +69,7 @@ async function generateTurnCredentials(roomId, secretKey) {
         credential
       }
     ],
-    ttl: 3600
+    ttl: 43200
   };
 }
 
