@@ -16,8 +16,8 @@ import {
 } from "./compression";
 
 export const CHUNK_SIZE = 64 * 1024; // 64 KB per packet (standard WebRTC MTU)
-export const MAX_BUFFERED_AMOUNT = 512 * 1024; // 512 KB high watermark (prevents SCTP bufferbloat & RTT inflation)
-export const BUFFER_LOW_THRESHOLD = 128 * 1024; // 128 KB low watermark (instant pipeline refill, zero idle gap)
+export const DEFAULT_MAX_BUFFERED_AMOUNT = 2 * 1024 * 1024; // 2 MB default high watermark
+export const DEFAULT_BUFFER_LOW_THRESHOLD = 512 * 1024; // 512 KB default low watermark
 
 export interface StreamProgressUpdate {
   bytesTransferred: number;
@@ -25,6 +25,10 @@ export interface StreamProgressUpdate {
   progressPercent: number;
   speedBps: number;
   etaSeconds: number;
+}
+
+export interface StreamOptions {
+  isLocal?: boolean;
 }
 
 export class FileStreamSender {
@@ -35,7 +39,7 @@ export class FileStreamSender {
     this.channels = Array.isArray(channels) ? channels : [channels];
     for (const ch of this.channels) {
       try {
-        ch.bufferedAmountLowThreshold = BUFFER_LOW_THRESHOLD;
+        ch.bufferedAmountLowThreshold = DEFAULT_BUFFER_LOW_THRESHOLD;
       } catch (_) {}
     }
   }
@@ -44,7 +48,7 @@ export class FileStreamSender {
     this.channels = channels;
     for (const ch of this.channels) {
       try {
-        ch.bufferedAmountLowThreshold = BUFFER_LOW_THRESHOLD;
+        ch.bufferedAmountLowThreshold = DEFAULT_BUFFER_LOW_THRESHOLD;
       } catch (_) {}
     }
   }
@@ -52,7 +56,7 @@ export class FileStreamSender {
   public addChannel(channel: RTCDataChannel): void {
     if (!this.channels.includes(channel)) {
       try {
-        channel.bufferedAmountLowThreshold = BUFFER_LOW_THRESHOLD;
+        channel.bufferedAmountLowThreshold = DEFAULT_BUFFER_LOW_THRESHOLD;
       } catch (_) {}
       this.channels.push(channel);
     }
@@ -68,12 +72,28 @@ export class FileStreamSender {
 
   public async sendFile(
     file: File,
-    onProgress: (update: StreamProgressUpdate) => void
+    onProgress: (update: StreamProgressUpdate) => void,
+    options?: StreamOptions
   ): Promise<string> {
     this.isCancelled = false;
+    const isLocal = options?.isLocal ?? true;
+
+    // Adaptive tuning:
+    // Local Wi-Fi: 4 MB buffer window, 1 MB refill threshold, 2 MB block reading, zero CPU compression
+    // Remote WAN/4G: 1 MB buffer window, 256 KB refill threshold, 512 KB block reading, adaptive Gzip
+    const maxBufferedAmount = isLocal ? 4 * 1024 * 1024 : 1024 * 1024;
+    const bufferLowThreshold = isLocal ? 1024 * 1024 : 256 * 1024;
+    const blockReadSize = isLocal ? 2 * 1024 * 1024 : 512 * 1024;
+
+    for (const ch of this.channels) {
+      try {
+        ch.bufferedAmountLowThreshold = bufferLowThreshold;
+      } catch (_) {}
+    }
+
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
     const fileId = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-    const shouldCompress = isCompressibleFile(file.name, file.type) && supportsCompression();
+    const shouldCompress = !isLocal && isCompressibleFile(file.name, file.type) && supportsCompression();
 
     // 1. Send Metadata control packet to all active channels
     const relativePath = (file as any).relativePath || file.name;
@@ -95,7 +115,7 @@ export class FileStreamSender {
       }
     }
 
-    // 2. Stream chunks with pipelined backpressure across all channels
+    // 2. Stream chunks with pipelined block backpressure across all channels
     let offset = 0;
     const startTime = performance.now();
     let lastSpeedCheckTime = startTime;
@@ -105,7 +125,7 @@ export class FileStreamSender {
 
     const notifyProgress = (force = false) => {
       const now = performance.now();
-      if (!force && now - lastProgressNotifyTime < 100) return;
+      if (!force && now - lastProgressNotifyTime < 80) return;
       lastProgressNotifyTime = now;
 
       // Measure max pending buffer across all active channels
@@ -117,7 +137,7 @@ export class FileStreamSender {
       const sentOverWire = Math.min(file.size, Math.max(0, offset - maxPending));
 
       const elapsed = (now - lastSpeedCheckTime) / 1000;
-      if (elapsed >= 0.12) {
+      if (elapsed >= 0.1) {
         const bytesDelta = Math.max(0, sentOverWire - lastSentOverWire);
         const instantSpeed = bytesDelta / elapsed;
 
@@ -160,26 +180,46 @@ export class FileStreamSender {
         throw new Error("Transfer cancelled by user.");
       }
 
-      // Check if any active channel has saturated buffer
+      // Pre-check buffer saturation before disk read
       const activeChannels = this.channels.filter((c) => c.readyState === "open");
       const maxPending = activeChannels.length > 0
         ? Math.max(0, ...activeChannels.map((c) => c.bufferedAmount))
         : 0;
 
-      if (maxPending > MAX_BUFFERED_AMOUNT) {
-        await this.waitForAllBuffersLow(() => notifyProgress());
+      if (maxPending > maxBufferedAmount) {
+        await this.waitForAllBuffersLow(bufferLowThreshold, () => notifyProgress());
       }
 
-      const slice = file.slice(offset, offset + CHUNK_SIZE);
-      const rawBuffer = await slice.arrayBuffer();
-      const chunkBuffer = shouldCompress ? await compressChunk(rawBuffer) : rawBuffer;
+      // Read block from file in memory (2 MB on Wi-Fi, 512 KB on WAN)
+      const nextBlockSize = Math.min(blockReadSize, file.size - offset);
+      const blockSlice = file.slice(offset, offset + nextBlockSize);
+      const blockBuffer = await blockSlice.arrayBuffer();
 
-      for (const ch of this.channels) {
-        if (ch.readyState === "open") {
-          ch.send(chunkBuffer);
+      // Synchronously slice and stream 64 KB chunks in memory
+      let blockOffset = 0;
+      while (blockOffset < blockBuffer.byteLength) {
+        const chunkLen = Math.min(CHUNK_SIZE, blockBuffer.byteLength - blockOffset);
+        const rawChunk = blockBuffer.slice(blockOffset, blockOffset + chunkLen);
+        const chunkBuffer = shouldCompress ? await compressChunk(rawChunk) : rawChunk;
+
+        for (const ch of this.channels) {
+          if (ch.readyState === "open") {
+            ch.send(chunkBuffer);
+          }
+        }
+
+        blockOffset += chunkLen;
+        offset += chunkLen;
+
+        // Check if buffer became saturated inside large block
+        const currentPending = activeChannels.length > 0
+          ? Math.max(0, ...activeChannels.map((c) => c.bufferedAmount))
+          : 0;
+        if (currentPending > maxBufferedAmount && blockOffset < blockBuffer.byteLength) {
+          notifyProgress();
+          await this.waitForAllBuffersLow(bufferLowThreshold, () => notifyProgress());
         }
       }
-      offset += rawBuffer.byteLength;
 
       notifyProgress();
     }
@@ -187,7 +227,7 @@ export class FileStreamSender {
     // Drain any remaining buffer on active channels before declaring completion
     while (this.channels.some((c) => c.readyState === "open" && c.bufferedAmount > 0)) {
       notifyProgress(true);
-      await new Promise((r) => setTimeout(r, 25));
+      await new Promise((r) => setTimeout(r, 15));
     }
     notifyProgress(true);
 
@@ -222,13 +262,17 @@ export class FileStreamSender {
     return finalSha256;
   }
 
-  private async waitForAllBuffersLow(onProgressCheck?: () => void): Promise<void> {
+  private async waitForAllBuffersLow(threshold: number, onProgressCheck?: () => void): Promise<void> {
     const activeChannels = this.channels.filter((c) => c.readyState === "open");
     if (activeChannels.length === 0) return;
 
     await Promise.all(
       activeChannels.map((ch) => {
-        if (ch.bufferedAmount <= BUFFER_LOW_THRESHOLD) return Promise.resolve();
+        try {
+          ch.bufferedAmountLowThreshold = threshold;
+        } catch (_) {}
+
+        if (ch.bufferedAmount <= threshold) return Promise.resolve();
         return new Promise<void>((resolve) => {
           let resolved = false;
           const done = () => {
@@ -242,11 +286,11 @@ export class FileStreamSender {
 
           const timer = setInterval(() => {
             if (onProgressCheck) onProgressCheck();
-            if (ch.bufferedAmount <= BUFFER_LOW_THRESHOLD) {
+            if (ch.bufferedAmount <= threshold) {
               clearInterval(timer);
               done();
             }
-          }, 25);
+          }, 10);
         });
       })
     );

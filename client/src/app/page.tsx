@@ -256,20 +256,26 @@ export default function HomePage() {
         );
 
         try {
-          const finalSha256 = await streamer.sendFile(current.file, (update) => {
-            setTransferItems((prev) =>
-              prev.map((item, idx) =>
-                idx === i
-                  ? {
-                      ...item,
-                      progress: update.progressPercent,
-                      speedBps: update.speedBps,
-                      etaSeconds: update.etaSeconds,
-                    }
-                  : item
-              )
-            );
-          });
+          const currentRoute = await peerRef.current?.getActiveRoute();
+          const isLocal = currentRoute?.isLocal ?? (routeInfo?.isLocal ?? true);
+          const finalSha256 = await streamer.sendFile(
+            current.file,
+            (update) => {
+              setTransferItems((prev) =>
+                prev.map((item, idx) =>
+                  idx === i
+                    ? {
+                        ...item,
+                        progress: update.progressPercent,
+                        speedBps: update.speedBps,
+                        etaSeconds: update.etaSeconds,
+                      }
+                    : item
+                )
+              );
+            },
+            { isLocal }
+          );
 
           // Mark completed
           setTransferItems((prev) =>
