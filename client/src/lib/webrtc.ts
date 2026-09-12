@@ -6,40 +6,59 @@
 import { SignalingClient } from "./signaling";
 import { SignalingEnvelope, PeerRole } from "@/types/protocol";
 
-const RTC_CONFIG: RTCConfiguration = {
+// Default fallback STUN-only configuration (0 server storage & 0 proxy bandwidth)
+const DEFAULT_STUN_CONFIG: RTCConfiguration = {
   iceServers: [
-    // Tier 1: Zero-cost Direct P2P STUN Servers
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
     { urls: "stun:stun.cloudflare.com:3478" },
     { urls: "stun:stun.services.mozilla.com:3478" },
     { urls: "stun:turn.peerwarp.com:3478" },
-
-    // Tier 2: Dedicated Hetzner TURN Relay Node (UDP, TCP, and TLS)
-    {
-      urls: [
-        "turn:turn.peerwarp.com:3478?transport=udp",
-        "turn:turn.peerwarp.com:3478?transport=tcp",
-        "turns:turn.peerwarp.com:5349?transport=tcp",
-        "turns:turn.peerwarp.com:5349",
-      ],
-      username: "peerwarp",
-      credential: "WarpSecure2026Turn!",
-    },
-
-    // Tier 3: Secondary Failover TURN Relay (OpenRelay)
-    {
-      urls: [
-        "turn:openrelay.metered.ca:80",
-        "turn:openrelay.metered.ca:443",
-        "turns:openrelay.metered.ca:443?transport=tcp",
-      ],
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
   ],
   iceCandidatePoolSize: 10,
 };
+
+let cachedDynamicConfig: { config: RTCConfiguration; expiresAt: number; roomId: string } | null = null;
+
+export async function getDynamicRtcConfig(roomId?: string): Promise<RTCConfiguration> {
+  const cleanRoom = (roomId || "DEFAULT").toUpperCase().trim();
+  const now = Date.now();
+
+  if (
+    cachedDynamicConfig &&
+    cachedDynamicConfig.roomId === cleanRoom &&
+    now < cachedDynamicConfig.expiresAt
+  ) {
+    return cachedDynamicConfig.config;
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch(`/api/v1/turn-credentials?room=${encodeURIComponent(cleanRoom)}`, {
+        cache: "no-store",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.iceServers && Array.isArray(data.iceServers)) {
+          const dynamicConfig: RTCConfiguration = {
+            iceServers: data.iceServers,
+            iceCandidatePoolSize: 10,
+          };
+          cachedDynamicConfig = {
+            config: dynamicConfig,
+            expiresAt: now + (data.ttl ? (data.ttl - 300) * 1000 : 3000 * 1000),
+            roomId: cleanRoom,
+          };
+          return dynamicConfig;
+        }
+      }
+    } catch (err) {
+      console.warn("[WebRTC] Could not fetch dynamic TURN token, falling back to direct STUN:", err);
+    }
+  }
+
+  return DEFAULT_STUN_CONFIG;
+}
 
 export interface WebRTCEvents {
   onConnectionStateChange: (state: RTCPeerConnectionState, peerId?: string) => void;
@@ -74,7 +93,8 @@ export class WebRTCPeer {
 
   public async initialize(): Promise<void> {
     if (this.role === "receiver") {
-      this.singlePc = new RTCPeerConnection(RTC_CONFIG);
+      const config = await getDynamicRtcConfig(this.signaling.currentRoomId);
+      this.singlePc = new RTCPeerConnection(config);
       this.singleCandidateQueue = [];
 
       this.singlePc.onconnectionstatechange = () => {
@@ -112,7 +132,8 @@ export class WebRTCPeer {
     }
 
     console.log(`[WebRTC Host] Establishing connection with recipient: ${peerId}`);
-    const pc = new RTCPeerConnection(RTC_CONFIG);
+    const config = await getDynamicRtcConfig(this.signaling.currentRoomId);
+    const pc = new RTCPeerConnection(config);
     const candidateQueue: RTCIceCandidateInit[] = [];
 
     const record: PeerConnectionRecord = {

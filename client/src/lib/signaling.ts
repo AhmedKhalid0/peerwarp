@@ -28,6 +28,10 @@ export class SignalingClient {
     return this.assignedPeerId;
   }
 
+  public get currentRoomId(): string {
+    return this.roomId;
+  }
+
   public connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.isExplicitlyClosed = false;
