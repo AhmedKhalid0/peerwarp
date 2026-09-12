@@ -29,6 +29,44 @@ export interface ZipFileEntry {
 }
 
 /**
+ * Sanitizes file and directory paths to guarantee immunity against Zip Slip vulnerabilities.
+ * Strips directory traversal tokens (../, ..\\), drive letters (C:), null bytes, and leading/trailing separators.
+ */
+export function sanitizeZipPath(rawName: string): string {
+  if (!rawName || typeof rawName !== "string") {
+    return "file_" + Math.random().toString(36).substring(2, 9);
+  }
+
+  // 1. Remove null bytes and control characters
+  let clean = rawName.replace(/[\x00-\x1f\x7f]/g, "");
+
+  // 2. Remove Windows drive letters (e.g. "C:", "D:")
+  clean = clean.replace(/^[a-zA-Z]:[/\\]*/, "");
+
+  // 3. Normalize all backslashes to forward slashes
+  clean = clean.replace(/\\/g, "/");
+
+  // 4. Split by slash and sanitize path segments
+  const segments = clean.split("/").map((s) => s.trim()).filter((s) => s.length > 0 && s !== ".");
+
+  const safeSegments: string[] = [];
+  for (const seg of segments) {
+    if (seg === ".." || /^\.\.+$/.test(seg)) {
+      // Prevent directory traversal escape
+      continue;
+    }
+    // Remove any embedded traversal dots
+    const sanitizedSeg = seg.replace(/\.\.+/g, "");
+    if (sanitizedSeg) {
+      safeSegments.push(sanitizedSeg);
+    }
+  }
+
+  const result = safeSegments.join("/");
+  return result || "file_" + Math.random().toString(36).substring(2, 9);
+}
+
+/**
  * Packs multiple files/folders into a standard .zip Blob.
  */
 export async function createZipArchive(files: ZipFileEntry[]): Promise<Blob> {
@@ -39,11 +77,8 @@ export async function createZipArchive(files: ZipFileEntry[]): Promise<Blob> {
   const textEncoder = new TextEncoder();
 
   for (const file of files) {
-    // Sanitize path against Zip Slip directory traversal (must use '/' and no '../' or leading '/')
-    const sanitizedName = file.name
-      .replace(/\\/g, "/")
-      .replace(/\.\.+[/\\]/g, "")
-      .replace(/^\/+/, "");
+    // Sanitize path against Zip Slip directory traversal
+    const sanitizedName = sanitizeZipPath(file.name);
     const encodedName = textEncoder.encode(sanitizedName);
     const data = file.data;
     const size = data.length;

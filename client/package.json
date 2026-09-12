@@ -6,7 +6,10 @@
     "dev": "next dev --port 3001",
     "build": "next build",
     "start": "next start --port 3001",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node --no-warnings --experimental-strip-types tests/run_all_tests.js",
+    "test:security": "node --no-warnings --experimental-strip-types tests/run_all_tests.js --security-only",
+    "test:ops": "node --no-warnings --experimental-strip-types tests/run_all_tests.js --ops-only"
   },
   "dependencies": {
     "@types/canvas-confetti": "^1.9.0",

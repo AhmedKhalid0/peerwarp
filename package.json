@@ -1,0 +1,12 @@
+{
+  "name": "peerwarp-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "npm --prefix client test",
+    "test:security": "npm --prefix client run test:security",
+    "test:ops": "npm --prefix client run test:ops",
+    "build": "npm --prefix client run build",
+    "dev": "npm --prefix client run dev"
+  }
+}
