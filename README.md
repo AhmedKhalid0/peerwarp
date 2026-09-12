@@ -57,6 +57,10 @@ PEERWARP P2P STREAMING (ZERO-HOP):
 | **Local Wi-Fi Radar (AirDrop-Style)**| Edge Public IP Hashing (`CF-Connecting-IP`) | Discover nearby peers on the same local network automatically with zero configuration. |
 | **PWA & OS Web Share Target** | Service Worker + `manifest.json` | Installable as a native app on Android/iOS; share directly from the OS Share Sheet. |
 | **Dedicated TURN Infrastructure** | Dedicated COTURN Node with TLS + Fail2ban | Traverses strict symmetric corporate NATs and mobile carriers when direct P2P is blocked. |
+| **Lazy TURN Allocation** | P2P-First with 12h Multi-Hour Resilience | 90% direct P2P without server load; seamless fallback for large file transfers. |
+| **Bilingual UI & RTL Engine** | Dynamic React Context + Native RTL Layout | Seamless one-click English ↔ Arabic localization across all touchpoints. |
+| **Zero-Asset Audio Chime** | Web Audio API Synthetic Chords | Crisp, instant completion sound synthesized in-browser without external audio files. |
+| **Social Handshake Sharing** | WhatsApp, Telegram & Web Share API | 1-click encrypted room invitations and mobile OS share-sheet integration. |
 | **Bit-for-Bit Verification** | Web Crypto Streaming SHA-256 | Cryptographically confirms data integrity before saving files to disk. |
 
 ---
