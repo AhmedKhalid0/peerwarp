@@ -94,19 +94,27 @@ export default function HomePage() {
     };
   }, []);
 
-  const handleStartSending = async () => {
-    if (selectedFiles.length === 0) return;
+  const handleStartSending = async (
+    filesOverride?: File[],
+    options?: { autoApprove?: boolean; roomId?: string; secretKey?: string }
+  ) => {
+    const filesToUse = filesOverride && filesOverride.length > 0 ? filesOverride : selectedFiles;
+    if (filesToUse.length === 0) return null;
 
-    // Generate high-entropy 8-character Base32 room code + 128-bit hash key
-    const newRoomId = generateShortRoomCode();
-    const secretKey = generateEphemeralKey();
+    if (filesOverride && filesOverride.length > 0) {
+      setSelectedFiles(filesOverride);
+    }
+
+    // Generate high-entropy 8-character Base32 room code + 128-bit hash key OR use pre-generated
+    const newRoomId = options?.roomId || generateShortRoomCode();
+    const secretKey = options?.secretKey || generateEphemeralKey();
     setRoomId(newRoomId);
 
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     setShareUrl(`${origin}/${newRoomId}#k=${secretKey}`);
 
     // Prepare transfer queue
-    const items: FileTransferItem[] = selectedFiles.map((file, idx) => ({
+    const items: FileTransferItem[] = filesToUse.map((file, idx) => ({
       id: `file-${idx}`,
       file,
       name: file.name,
@@ -121,16 +129,22 @@ export default function HomePage() {
     setTransferItems(items);
     setConnectedPeers([]);
 
+    const shouldRequireApproval = options?.autoApprove ? false : requireApproval;
+
     // Initialize Signaling with multi-peer support
     const signaling = new SignalingClient(newRoomId, (envelope) => {
       if (envelope.type === "joined" && envelope.peerCount) {
         setPeerCount(envelope.peerCount);
       }
       if (envelope.type === "knock") {
-        setPendingKnock({
-          peerId: envelope.peerId!,
-          deviceInfo: envelope.deviceInfo || "Mobile / Web Device",
-        });
+        if (options?.autoApprove && envelope.peerId) {
+          signaling.approvePeer(envelope.peerId);
+        } else {
+          setPendingKnock({
+            peerId: envelope.peerId!,
+            deviceInfo: envelope.deviceInfo || "Mobile / Web Device",
+          });
+        }
       }
       if (envelope.type === "peer_approved") {
         setConnectedPeers((prev) => [
@@ -160,7 +174,7 @@ export default function HomePage() {
     try {
       await signaling.connect();
       // Configure room capacity and knock-to-join gate
-      signaling.configureRoom(maxRecipients, requireApproval);
+      signaling.configureRoom(maxRecipients, shouldRequireApproval);
 
       // Initialize WebRTC as initiator (Star topology)
       const peer = new WebRTCPeer("initiator", signaling, {
@@ -189,6 +203,8 @@ export default function HomePage() {
     } catch (err) {
       console.error("[Signaling] Connection failed:", err);
     }
+
+    return { roomId: newRoomId, secretKey };
   };
 
   const handleApproveKnock = (peerId: string) => {
@@ -514,7 +530,7 @@ export default function HomePage() {
 
                 <div className="flex justify-center">
                   <button
-                    onClick={handleStartSending}
+                    onClick={() => handleStartSending()}
                     className="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-black hover:bg-neutral-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-black font-semibold text-sm sm:text-base shadow-xs hover:shadow transition-all scale-100 hover:scale-[1.01] active:scale-[0.99]"
                   >
                     <span>Create Transfer Room & QR Code</span>
@@ -621,16 +637,18 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* LOCAL RADAR TAB */}
+        {/* LOCAL RADAR TAB (AirDrop Style) */}
         {activeTab === "radar" && !roomId && (
           <LocalRadar
+            selectedFiles={selectedFiles}
+            onFilesSelected={(files) => setSelectedFiles(files)}
             hasFilesToSend={selectedFiles.length > 0}
-            onSendToPeer={async (targetPeerId) => {
-              if (selectedFiles.length === 0) {
-                setActiveTab("send");
-                return;
-              }
-              await handleStartSending();
+            onSendToPeer={async (targetPeerId, targetDeviceInfo, files, rId, sKey) => {
+              await handleStartSending(files, {
+                autoApprove: true,
+                roomId: rId,
+                secretKey: sKey,
+              });
             }}
             incomingInvite={radarInvite}
             onAcceptInvite={(invRoomId, invKey) => {
