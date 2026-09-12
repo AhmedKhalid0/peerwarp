@@ -65,10 +65,10 @@ function sleep(ms) {
 
     // Step 2: Switch both to Wi-Fi Direct tab
     console.log("3. Switching both devices to 'Wi-Fi Direct' tab...");
-    const laptopRadarTab = await laptopPage.waitForSelector('button::-p-text("Wi-Fi Direct")');
+    const laptopRadarTab = await laptopPage.waitForSelector("#tab-radar, button::-p-text('Wi-Fi Direct')");
     await laptopRadarTab.click();
 
-    const mobileRadarTab = await mobilePage.waitForSelector('button::-p-text("Wi-Fi Direct")');
+    const mobileRadarTab = await mobilePage.waitForSelector("#tab-radar, button::-p-text('Wi-Fi Direct')");
     await mobileRadarTab.click();
 
     // Step 3: Await mutual discovery

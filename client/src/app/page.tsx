@@ -48,13 +48,13 @@ export default function HomePage() {
   const [joinCodeInput, setJoinCodeInput] = useState("");
   const [canInstallPwa, setCanInstallPwa] = useState(false);
   const [radarInvite, setRadarInvite] = useState<any | null>(null);
-  const MAX_WIFI_FILE_SIZE_BYTES = 50 * 1024 * 1024 * 1024; // 50 GB
+  const MAX_DIRECT_FILE_SIZE_BYTES = 50 * 1024 * 1024 * 1024; // 50 GB
   const MAX_RELAY_FILE_SIZE_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB
   const [sizeWarning, setSizeWarning] = useState<string | null>(null);
 
   const handleFilesSelected = (newFiles: File[]) => {
     setSizeWarning(null);
-    const oversized = newFiles.find((f) => f.size > MAX_WIFI_FILE_SIZE_BYTES);
+    const oversized = newFiles.find((f) => f.size > MAX_DIRECT_FILE_SIZE_BYTES);
     if (oversized) {
       alert(`The file "${oversized.name}" exceeds the maximum limit of 50 GB.`);
       return;
@@ -63,7 +63,7 @@ export default function HomePage() {
     const large = newFiles.find((f) => f.size > MAX_RELAY_FILE_SIZE_BYTES);
     if (large) {
       setSizeWarning(
-        `⚡ Note: "${large.name}" is over 5 GB. Files over 5 GB transfer at maximum hardware speed directly over local Wi-Fi up to 50 GB. Mobile / Cloud TURN relay is disabled for files over 5 GB.`
+        `⚡ Note: "${large.name}" is over 5 GB. Large files (up to 50 GB) transfer directly peer-to-peer (on local Wi-Fi or direct internet) without server relay. If devices require the Hetzner TURN relay server, files are capped at 5 GB.`
       );
     }
 
@@ -280,7 +280,7 @@ export default function HomePage() {
 
           if (isRelay && current.file.size > MAX_RELAY_FILE_SIZE_BYTES) {
             throw new Error(
-              `Transfer blocked: "${current.name}" exceeds the 5 GB mobile / cloud TURN relay limit. Connect both devices to the same Wi-Fi network to transfer up to 50 GB directly.`
+              `Transfer blocked: "${current.name}" exceeds the 5 GB limit for TURN relay connections. Up to 50 GB is supported on any direct P2P connection (local Wi-Fi or direct internet) where the TURN relay server is not required.`
             );
           }
 
@@ -369,7 +369,7 @@ export default function HomePage() {
     },
     {
       q: "Is there any file size limit on PeerWarp?",
-      a: "On local Wi-Fi, you can transfer files up to 50 GB directly between devices with 0 KB internet data used and no cloud server relay. When transferring over mobile cellular networks or paths requiring our TURN relay, files are limited to 5 GB to protect mobile data quotas and server bandwidth.",
+      a: "Up to 50 GB is supported on any direct peer-to-peer connection (whether on local Wi-Fi or directly across the internet via STUN where TURN relay is not used). When transferring across restricted firewalls that force traffic through our Hetzner TURN relay server, files are capped at 5 GB to protect server bandwidth and resources.",
     },
     {
       q: "How does the Local Wi-Fi Direct Radar work?",
@@ -434,6 +434,7 @@ export default function HomePage() {
               Receive Files
             </button>
             <button
+              id="tab-radar"
               onClick={() => setActiveTab("radar")}
               className={`px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === "radar"
@@ -839,7 +840,7 @@ export default function HomePage() {
                 <tr>
                   <td className="p-4 sm:p-5 font-medium text-neutral-900 dark:text-neutral-100">File Size Limits</td>
                   <td className="p-4 sm:p-5 text-black dark:text-white font-medium flex items-center gap-1.5">
-                    <Check className="w-4 h-4 text-emerald-600" /> Up to 50 GB on Wi-Fi (5 GB on Mobile / TURN)
+                    <Check className="w-4 h-4 text-emerald-600" /> Up to 50 GB (Direct P2P) • 5 GB (TURN Relay)
                   </td>
                   <td className="p-4 sm:p-5 text-neutral-500 dark:text-neutral-400">Capped at 2 GB free unless you pay monthly</td>
                 </tr>

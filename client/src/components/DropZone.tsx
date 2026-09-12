@@ -187,15 +187,15 @@ export function DropZone({ onFilesSelected, disabled = false }: DropZoneProps) {
         {/* Value badges */}
         <div className="pt-3 flex flex-wrap items-center justify-center gap-2.5 text-xs text-neutral-600 dark:text-neutral-400">
           <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs font-semibold text-neutral-900 dark:text-neutral-100">
-            <Wifi className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            Up to 50 GB on Wi-Fi
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs font-semibold">
-            <Smartphone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            Up to 5 GB on Mobile / 4G
+            <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            Up to 50 GB (Direct P2P)
           </span>
           <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs font-semibold">
             <HardDrive className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
+            5 GB on TURN Relay
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs font-semibold">
+            <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             Zero Cloud Storage
           </span>
           <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xs font-semibold">
