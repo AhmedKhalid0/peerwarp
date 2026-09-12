@@ -38,18 +38,25 @@ export class StreamingSHA256 {
 }
 
 export function formatBytes(bytes: number, decimals = 2): string {
-  if (bytes === 0) return "0 B";
+  if (!bytes || bytes <= 0 || !isFinite(bytes)) return "0 B";
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
   const sizes = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+  const idx = Math.min(Math.max(0, i), sizes.length - 1);
+  return `${parseFloat((bytes / Math.pow(k, idx)).toFixed(dm))} ${sizes[idx]}`;
 }
 
 export function formatDuration(seconds: number): string {
-  if (!isFinite(seconds) || seconds < 0) return "--";
-  if (seconds < 60) return `${Math.round(seconds)}s`;
+  if (!isFinite(seconds) || seconds <= 0) return "--";
+  if (seconds < 60) return `${Math.max(1, Math.round(seconds))}s`;
   const mins = Math.floor(seconds / 60);
   const secs = Math.round(seconds % 60);
+  if (mins >= 60) {
+    const hrs = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return `${hrs}h ${remMins}m`;
+  }
   return `${mins}m ${secs}s`;
 }
+

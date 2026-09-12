@@ -8,9 +8,10 @@ interface PairingModalProps {
   roomId: string;
   shareUrl: string;
   peerCount: number;
+  maxPeers?: number;
 }
 
-export function PairingModal({ roomId, shareUrl, peerCount }: PairingModalProps) {
+export function PairingModal({ roomId, shareUrl, peerCount, maxPeers = 5 }: PairingModalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
 
@@ -44,6 +45,8 @@ export function PairingModal({ roomId, shareUrl, peerCount }: PairingModalProps)
     }
   };
 
+  const recipientCount = Math.max(0, peerCount - 1);
+
   return (
     <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 sm:p-8 shadow-xs">
       <div className="flex flex-col md:flex-row items-center justify-between gap-8">
@@ -51,16 +54,18 @@ export function PairingModal({ roomId, shareUrl, peerCount }: PairingModalProps)
         <div className="flex-1 space-y-5 text-center md:text-left">
           <div className="space-y-1">
             <div className="flex items-center justify-center md:justify-start gap-2">
-              <span className={`flex h-2 w-2 rounded-full ${peerCount > 1 ? "bg-emerald-500" : "bg-neutral-400 animate-pulse"}`} />
+              <span className={`flex h-2 w-2 rounded-full ${recipientCount > 0 ? "bg-emerald-500" : "bg-neutral-400 animate-pulse"}`} />
               <span className="text-xs font-semibold uppercase tracking-wider text-neutral-600 dark:text-neutral-400">
-                {peerCount === 1 ? "Waiting for recipient to connect..." : "Recipient Connected & Ready"}
+                {recipientCount > 0
+                  ? `${recipientCount} of ${maxPeers} Recipient${recipientCount > 1 ? "s" : ""} Connected`
+                  : `Waiting for recipients (Up to ${maxPeers} allowed)...`}
               </span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
               Pair your devices
             </h2>
             <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
-              Scan this QR code with your phone camera, or send the direct link to anyone.
+              Scan this QR code with your phone camera, or send the direct link to your colleagues.
             </p>
           </div>
 

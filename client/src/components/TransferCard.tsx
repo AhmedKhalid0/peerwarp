@@ -25,7 +25,7 @@ export function TransferCard({ item, isReceiver = false, onDownload, onCancel }:
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-sm sm:text-base text-neutral-900 dark:text-neutral-100 truncate">
-              {item.name}
+              {item.relativePath || item.name}
             </span>
             <span className="text-xs text-neutral-400 dark:text-neutral-500 font-mono">
               ({formatBytes(item.size)})
@@ -61,7 +61,14 @@ export function TransferCard({ item, isReceiver = false, onDownload, onCancel }:
         </div>
 
         {/* Action button */}
-        {isCompleted && isReceiver && item.blobUrl && (
+        {isCompleted && isReceiver && item.isDirectSaved && (
+          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold border border-emerald-200 dark:border-emerald-800 shrink-0">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+            Saved to Disk
+          </span>
+        )}
+
+        {isCompleted && isReceiver && !item.isDirectSaved && item.blobUrl && (
           <button
             onClick={onDownload}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-black hover:bg-neutral-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-black text-xs font-semibold shadow-xs transition-colors shrink-0"

@@ -4,6 +4,7 @@
  */
 
 import { SignalingEnvelope, PeerRole } from "@/types/protocol";
+import { getDeviceSummary } from "./id";
 
 export type SignalingEventHandler = (envelope: SignalingEnvelope) => void;
 
@@ -13,10 +14,15 @@ export class SignalingClient {
   private onMessageCallback: SignalingEventHandler;
   private pingIntervalId: any = null;
   private isExplicitlyClosed = false;
+  private assignedPeerId: string | null = null;
 
   constructor(roomId: string, onMessage: SignalingEventHandler) {
     this.roomId = roomId.toUpperCase().trim();
     this.onMessageCallback = onMessage;
+  }
+
+  public get peerId(): string | null {
+    return this.assignedPeerId;
   }
 
   public connect(): Promise<void> {
@@ -36,6 +42,9 @@ export class SignalingClient {
           try {
             const data: SignalingEnvelope = JSON.parse(event.data);
             if (data.type === "pong") return;
+            if (data.type === "joined" && data.peerId) {
+              this.assignedPeerId = data.peerId;
+            }
             this.onMessageCallback(data);
           } catch (err) {
             console.error("[Signaling] Failed to parse message:", err);
@@ -63,10 +72,35 @@ export class SignalingClient {
 
   public send(envelope: SignalingEnvelope): void {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      if (this.assignedPeerId && !envelope.from) {
+        envelope.from = this.assignedPeerId;
+      }
       this.socket.send(JSON.stringify(envelope));
     } else {
       console.warn("[Signaling] Socket not open, message dropped:", envelope.type);
     }
+  }
+
+  public configureRoom(maxPeers: number, requireApproval: boolean): void {
+    this.send({
+      type: "room_config",
+      maxPeers,
+      requireApproval,
+    });
+  }
+
+  public approvePeer(targetPeerId: string): void {
+    this.send({
+      type: "approve_peer",
+      payload: { targetPeerId },
+    });
+  }
+
+  public rejectPeer(targetPeerId: string): void {
+    this.send({
+      type: "reject_peer",
+      payload: { targetPeerId },
+    });
   }
 
   public close(): void {
@@ -93,32 +127,25 @@ export class SignalingClient {
   }
 
   private resolveSignalingUrl(roomId: string): string {
-    // 1. Explicit env override (only if not a localhost fallback in production)
+    const deviceParam = `device=${encodeURIComponent(getDeviceSummary())}`;
+
+    // 1. Explicit env override
     if (process.env.NEXT_PUBLIC_SIGNALING_URL) {
       const base = process.env.NEXT_PUBLIC_SIGNALING_URL.replace(/\/+$/, "");
-      if (typeof window !== "undefined") {
-        const isLocalHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-        if (isLocalHost) {
-          return `${base}/${roomId}`;
-        }
-        if (!base.includes("127.0.0.1") && !base.includes("localhost")) {
-          return `${base}/${roomId}`;
-        }
-      } else {
-        return `${base}/${roomId}`;
-      }
+      const separator = base.includes("?") ? "&" : "?";
+      return `${base}/${roomId}${separator}${deviceParam}`;
     }
 
     // 2. Local dev detection (defaults to port 8002 for FastAPI)
     if (typeof window !== "undefined") {
       const host = window.location.hostname;
       if (host === "localhost" || host === "127.0.0.1") {
-        return `ws://127.0.0.1:8002/ws/${roomId}`;
+        return `ws://127.0.0.1:8002/ws/${roomId}?${deviceParam}`;
       }
       // 3. Production: use edge Cloudflare Worker signaling
-      return `wss://peerwarp-signaling.ahmedkhaled791.workers.dev/ws/${roomId}`;
+      return `wss://peerwarp-signaling.ahmedkhaled791.workers.dev/ws/${roomId}?${deviceParam}`;
     }
 
-    return `wss://peerwarp-signaling.ahmedkhaled791.workers.dev/ws/${roomId}`;
+    return `wss://peerwarp-signaling.ahmedkhaled791.workers.dev/ws/${roomId}?${deviceParam}`;
   }
 }

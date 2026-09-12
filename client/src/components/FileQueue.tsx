@@ -70,7 +70,7 @@ export function FileQueue({ files, onRemoveFile, onClearAll, disabled = false }:
               </div>
               <div className="min-w-0">
                 <p className="font-medium text-neutral-900 dark:text-neutral-100 truncate">
-                  {file.name}
+                  {(file as any).relativePath || file.name}
                 </p>
                 <p className="text-[11px] text-neutral-500 dark:text-neutral-400 font-mono">
                   {formatBytes(file.size)}

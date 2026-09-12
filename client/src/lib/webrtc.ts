@@ -8,28 +8,63 @@ import { SignalingEnvelope, PeerRole } from "@/types/protocol";
 
 const RTC_CONFIG: RTCConfiguration = {
   iceServers: [
+    // Tier 1: Zero-cost Direct P2P STUN Servers
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:stun2.l.google.com:19302" },
-    { urls: "stun:stun3.l.google.com:19302" },
-    { urls: "stun:stun4.l.google.com:19302" },
+    { urls: "stun:stun.cloudflare.com:3478" },
+    { urls: "stun:stun.services.mozilla.com:3478" },
+    { urls: "stun:turn.peerwarp.com:3478" },
+
+    // Tier 2: Dedicated Hetzner TURN Relay Node (UDP, TCP, and TLS)
+    {
+      urls: [
+        "turn:turn.peerwarp.com:3478?transport=udp",
+        "turn:turn.peerwarp.com:3478?transport=tcp",
+        "turns:turn.peerwarp.com:5349?transport=tcp",
+        "turns:turn.peerwarp.com:5349",
+      ],
+      username: "peerwarp",
+      credential: "WarpSecure2026Turn!",
+    },
+
+    // Tier 3: Secondary Failover TURN Relay (OpenRelay)
+    {
+      urls: [
+        "turn:openrelay.metered.ca:80",
+        "turn:openrelay.metered.ca:443",
+        "turns:openrelay.metered.ca:443?transport=tcp",
+      ],
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
   ],
   iceCandidatePoolSize: 10,
 };
 
 export interface WebRTCEvents {
-  onConnectionStateChange: (state: RTCPeerConnectionState) => void;
-  onDataChannelReady: (channel: RTCDataChannel) => void;
-  onError: (error: string) => void;
+  onConnectionStateChange: (state: RTCPeerConnectionState, peerId?: string) => void;
+  onDataChannelReady: (channel: RTCDataChannel, peerId?: string) => void;
+  onPeerDisconnected?: (peerId: string) => void;
+  onError: (error: string, peerId?: string) => void;
+}
+
+interface PeerConnectionRecord {
+  pc: RTCPeerConnection;
+  dataChannel: RTCDataChannel | null;
+  candidateQueue: RTCIceCandidateInit[];
 }
 
 export class WebRTCPeer {
-  private pc: RTCPeerConnection | null = null;
-  private dataChannel: RTCDataChannel | null = null;
+  // Initiator manages multiple peer connections (Star topology)
+  private peers: Map<string, PeerConnectionRecord> = new Map();
+  // Receiver manages a single peer connection to the host
+  private singlePc: RTCPeerConnection | null = null;
+  private singleChannel: RTCDataChannel | null = null;
+  private singleCandidateQueue: RTCIceCandidateInit[] = [];
+
   private signaling: SignalingClient;
   private role: PeerRole;
   private events: WebRTCEvents;
-  private candidateQueue: RTCIceCandidateInit[] = [];
 
   constructor(role: PeerRole, signaling: SignalingClient, events: WebRTCEvents) {
     this.role = role;
@@ -38,163 +73,226 @@ export class WebRTCPeer {
   }
 
   public async initialize(): Promise<void> {
-    this.pc = new RTCPeerConnection(RTC_CONFIG);
-    this.candidateQueue = [];
+    if (this.role === "receiver") {
+      this.singlePc = new RTCPeerConnection(RTC_CONFIG);
+      this.singleCandidateQueue = [];
 
-    this.pc.onconnectionstatechange = () => {
-      if (this.pc) {
-        console.log(`[WebRTC (${this.role})] State change:`, this.pc.connectionState);
-        this.events.onConnectionStateChange(this.pc.connectionState);
-      }
+      this.singlePc.onconnectionstatechange = () => {
+        if (this.singlePc) {
+          this.events.onConnectionStateChange(this.singlePc.connectionState);
+        }
+      };
+
+      this.singlePc.onicecandidate = (event) => {
+        if (event.candidate) {
+          this.signaling.send({
+            type: "ice_candidate",
+            to: "host",
+            payload: event.candidate.toJSON(),
+          });
+        }
+      };
+
+      this.singlePc.ondatachannel = (event) => {
+        console.log("[WebRTC Receiver] Received DataChannel from host!");
+        this.singleChannel = event.channel;
+        this.setupDataChannel(this.singleChannel);
+      };
+    }
+  }
+
+  /**
+   * Initiator initiates a WebRTC connection with a newly approved recipient.
+   */
+  public async connectToRecipient(peerId: string): Promise<void> {
+    if (this.role !== "initiator") return;
+    if (this.peers.has(peerId)) {
+      this.peers.get(peerId)?.pc.close();
+      this.peers.delete(peerId);
+    }
+
+    console.log(`[WebRTC Host] Establishing connection with recipient: ${peerId}`);
+    const pc = new RTCPeerConnection(RTC_CONFIG);
+    const candidateQueue: RTCIceCandidateInit[] = [];
+
+    const record: PeerConnectionRecord = {
+      pc,
+      dataChannel: null,
+      candidateQueue,
+    };
+    this.peers.set(peerId, record);
+
+    pc.onconnectionstatechange = () => {
+      this.events.onConnectionStateChange(pc.connectionState, peerId);
     };
 
-    // Forward local ICE candidates to remote peer via signaling
-    this.pc.onicecandidate = (event) => {
+    pc.onicecandidate = (event) => {
       if (event.candidate) {
         this.signaling.send({
           type: "ice_candidate",
+          to: peerId,
           payload: event.candidate.toJSON(),
         });
       }
     };
 
-    if (this.role === "initiator") {
-      // Initiator creates the DataChannel
-      this.dataChannel = this.pc.createDataChannel("peerwarp_transfer", {
-        ordered: true,
-      });
-      this.setupDataChannel(this.dataChannel);
-
-      // Create initial local description
-      try {
-        const offer = await this.pc.createOffer();
-        await this.pc.setLocalDescription(offer);
-        this.signaling.send({
-          type: "offer",
-          payload: { sdp: offer.sdp, type: offer.type },
-        });
-      } catch (err: any) {
-        console.warn("[WebRTC] Initial offer creation deferred until peer joins:", err);
-      }
-    } else {
-      // Receiver waits for incoming DataChannel
-      this.pc.ondatachannel = (event) => {
-        console.log("[WebRTC] Receiver received DataChannel from sender!");
-        this.dataChannel = event.channel;
-        this.setupDataChannel(this.dataChannel);
-      };
-    }
-  }
-
-  public async sendOffer(): Promise<void> {
-    if (!this.pc || this.role !== "initiator") return;
+    // Host creates dedicated DataChannel for this peer
+    const dataChannel = pc.createDataChannel(`peerwarp_${peerId}`, { ordered: true });
+    record.dataChannel = dataChannel;
+    this.setupDataChannel(dataChannel, peerId);
 
     try {
-      if (!this.dataChannel || this.dataChannel.readyState === "closed") {
-        this.dataChannel = this.pc.createDataChannel("peerwarp_transfer", {
-          ordered: true,
-        });
-        this.setupDataChannel(this.dataChannel);
-      }
-
-      const offer = await this.pc.createOffer();
-      await this.pc.setLocalDescription(offer);
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
 
       this.signaling.send({
         type: "offer",
+        to: peerId,
         payload: { sdp: offer.sdp, type: offer.type },
       });
-      console.log("[WebRTC] Dispatched fresh SDP Offer to incoming peer");
+      console.log(`[WebRTC Host] Sent SDP offer to recipient ${peerId}`);
     } catch (err: any) {
-      console.error("[WebRTC] Failed to send offer on peer arrival:", err);
-      this.events.onError(err?.message || "Failed to create WebRTC offer");
+      console.error(`[WebRTC Host] Failed to create offer for ${peerId}:`, err);
+      this.events.onError(err?.message || "Failed to create offer", peerId);
     }
   }
 
   public async handleSignalingMessage(envelope: SignalingEnvelope): Promise<void> {
-    if (!this.pc) return;
-
     try {
-      // When second peer connects, sender triggers/re-sends offer
-      if (envelope.type === "joined" && this.role === "initiator" && envelope.peerCount === 2) {
-        console.log("[WebRTC] Peer 2 joined! Initiating handshake...");
-        await this.sendOffer();
+      // 1. Receiver logic: handling messages from the host
+      if (this.role === "receiver" && this.singlePc) {
+        if (envelope.type === "offer") {
+          console.log("[WebRTC Receiver] Handling SDP offer from host");
+          await this.singlePc.setRemoteDescription(new RTCSessionDescription(envelope.payload));
+          await this.flushQueue(this.singlePc, this.singleCandidateQueue);
+
+          const answer = await this.singlePc.createAnswer();
+          await this.singlePc.setLocalDescription(answer);
+
+          this.signaling.send({
+            type: "answer",
+            to: envelope.from || "host",
+            payload: { sdp: answer.sdp, type: answer.type },
+          });
+          console.log("[WebRTC Receiver] Sent SDP answer to host");
+        } else if (envelope.type === "ice_candidate" && envelope.payload) {
+          if (this.singlePc.remoteDescription && this.singlePc.remoteDescription.type) {
+            await this.singlePc.addIceCandidate(new RTCIceCandidate(envelope.payload));
+          } else {
+            this.singleCandidateQueue.push(envelope.payload);
+          }
+        }
         return;
       }
 
-      if (envelope.type === "offer" && this.role === "receiver") {
-        console.log("[WebRTC] Receiver handling SDP offer from sender");
-        await this.pc.setRemoteDescription(new RTCSessionDescription(envelope.payload));
-        await this.flushQueuedCandidates();
+      // 2. Initiator logic: handling messages from a specific recipient
+      if (this.role === "initiator") {
+        const fromPeerId = envelope.from || envelope.peerId;
+        if (!fromPeerId) return;
 
-        const answer = await this.pc.createAnswer();
-        await this.pc.setLocalDescription(answer);
+        if (envelope.type === "peer_approved") {
+          await this.connectToRecipient(fromPeerId);
+          return;
+        }
 
-        this.signaling.send({
-          type: "answer",
-          payload: { sdp: answer.sdp, type: answer.type },
-        });
-        console.log("[WebRTC] Receiver sent SDP answer back to sender");
-      } else if (envelope.type === "answer" && this.role === "initiator") {
-        console.log("[WebRTC] Initiator received SDP answer from receiver");
-        await this.pc.setRemoteDescription(new RTCSessionDescription(envelope.payload));
-        await this.flushQueuedCandidates();
-      } else if (envelope.type === "ice_candidate" && envelope.payload) {
-        if (this.pc.remoteDescription && this.pc.remoteDescription.type) {
-          await this.pc.addIceCandidate(new RTCIceCandidate(envelope.payload));
-        } else {
-          this.candidateQueue.push(envelope.payload);
+        const peerRecord = this.peers.get(fromPeerId);
+        if (!peerRecord) return;
+
+        if (envelope.type === "answer") {
+          console.log(`[WebRTC Host] Received SDP answer from ${fromPeerId}`);
+          await peerRecord.pc.setRemoteDescription(new RTCSessionDescription(envelope.payload));
+          await this.flushQueue(peerRecord.pc, peerRecord.candidateQueue);
+        } else if (envelope.type === "ice_candidate" && envelope.payload) {
+          if (peerRecord.pc.remoteDescription && peerRecord.pc.remoteDescription.type) {
+            await peerRecord.pc.addIceCandidate(new RTCIceCandidate(envelope.payload));
+          } else {
+            peerRecord.candidateQueue.push(envelope.payload);
+          }
+        } else if (envelope.type === "peer_left") {
+          this.disconnectPeer(fromPeerId);
         }
       }
     } catch (err: any) {
       console.error("[WebRTC] Error processing signaling message:", err);
-      this.events.onError(err?.message || "WebRTC signaling negotiation failed");
+      this.events.onError(err?.message || "Signaling negotiation failed");
     }
   }
 
-  private async flushQueuedCandidates(): Promise<void> {
-    if (!this.pc) return;
-    while (this.candidateQueue.length > 0) {
-      const cand = this.candidateQueue.shift();
+  public disconnectPeer(peerId: string): void {
+    const record = this.peers.get(peerId);
+    if (record) {
+      if (record.dataChannel) {
+        try { record.dataChannel.close(); } catch (_) {}
+      }
+      try { record.pc.close(); } catch (_) {}
+      this.peers.delete(peerId);
+      this.events.onPeerDisconnected?.(peerId);
+    }
+  }
+
+  private async flushQueue(pc: RTCPeerConnection, queue: RTCIceCandidateInit[]): Promise<void> {
+    while (queue.length > 0) {
+      const cand = queue.shift();
       if (cand) {
         try {
-          await this.pc.addIceCandidate(new RTCIceCandidate(cand));
+          await pc.addIceCandidate(new RTCIceCandidate(cand));
         } catch (_) {}
       }
     }
   }
 
-  private setupDataChannel(channel: RTCDataChannel): void {
+  private setupDataChannel(channel: RTCDataChannel, peerId?: string): void {
     channel.binaryType = "arraybuffer";
 
     channel.onopen = () => {
-      console.log("[DataChannel] Channel opened successfully!");
-      this.events.onDataChannelReady(channel);
+      console.log(`[DataChannel] Ready for ${peerId || "single-peer"}`);
+      this.events.onDataChannelReady(channel, peerId);
     };
 
     channel.onerror = (err) => {
-      console.error("[DataChannel] Error:", err);
-      this.events.onError("DataChannel encountered an error");
+      console.error(`[DataChannel] Error on ${peerId}:`, err);
+      this.events.onError("DataChannel encountered an error", peerId);
     };
 
     channel.onclose = () => {
-      console.log("[DataChannel] Closed");
+      console.log(`[DataChannel] Closed on ${peerId}`);
     };
   }
 
+  public getActiveDataChannels(): RTCDataChannel[] {
+    if (this.role === "receiver") {
+      return this.singleChannel && this.singleChannel.readyState === "open"
+        ? [this.singleChannel]
+        : [];
+    }
+    const openChannels: RTCDataChannel[] = [];
+    for (const record of this.peers.values()) {
+      if (record.dataChannel && record.dataChannel.readyState === "open") {
+        openChannels.push(record.dataChannel);
+      }
+    }
+    return openChannels;
+  }
+
   public getDataChannel(): RTCDataChannel | null {
-    return this.dataChannel;
+    const channels = this.getActiveDataChannels();
+    return channels.length > 0 ? channels[0] : null;
   }
 
   public close(): void {
-    if (this.dataChannel) {
-      this.dataChannel.close();
-      this.dataChannel = null;
+    if (this.singleChannel) {
+      this.singleChannel.close();
+      this.singleChannel = null;
     }
-    if (this.pc) {
-      this.pc.close();
-      this.pc = null;
+    if (this.singlePc) {
+      this.singlePc.close();
+      this.singlePc = null;
     }
-    this.candidateQueue = [];
+    for (const record of this.peers.values()) {
+      if (record.dataChannel) record.dataChannel.close();
+      record.pc.close();
+    }
+    this.peers.clear();
   }
 }
+

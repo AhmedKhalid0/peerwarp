@@ -20,20 +20,43 @@ import {
   QrCode,
   CheckCircle2,
   FileCheck2,
+  AlertCircle,
+  Users,
+  Plus,
+  Minus,
+  Radio,
+  Download,
 } from "lucide-react";
 import { DropZone } from "@/components/DropZone";
 import { FileQueue } from "@/components/FileQueue";
 import { PairingModal } from "@/components/PairingModal";
 import { TransferCard } from "@/components/TransferCard";
+import { KnockApprovalModal } from "@/components/KnockApprovalModal";
+import { ConnectedPeersList } from "@/components/ConnectedPeersList";
+import { LocalRadar } from "@/components/LocalRadar";
 import { SignalingClient } from "@/lib/signaling";
 import { WebRTCPeer } from "@/lib/webrtc";
 import { FileStreamSender } from "@/lib/streamer";
-import { FileTransferItem } from "@/types/protocol";
+import { FileTransferItem, RecipientPeer } from "@/types/protocol";
+import { wakeLock } from "@/lib/wakelock";
+import { generateShortRoomCode, generateEphemeralKey } from "@/lib/id";
+import { initPwaInstallPrompt, promptPwaInstall, getAndClearSharedFiles } from "@/lib/pwa";
+
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB limit
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<"send" | "receive">("send");
+  const [activeTab, setActiveTab] = useState<"send" | "receive" | "radar">("send");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [sizeLimitWarning, setSizeLimitWarning] = useState<string | null>(null);
   const [joinCodeInput, setJoinCodeInput] = useState("");
+  const [canInstallPwa, setCanInstallPwa] = useState(false);
+  const [radarInvite, setRadarInvite] = useState<any | null>(null);
+
+  // Multi-user & Privacy settings
+  const [maxRecipients, setMaxRecipients] = useState<number>(5);
+  const [requireApproval, setRequireApproval] = useState<boolean>(true);
+  const [pendingKnock, setPendingKnock] = useState<{ peerId: string; deviceInfo: string } | null>(null);
+  const [connectedPeers, setConnectedPeers] = useState<RecipientPeer[]>([]);
 
   // Sender session state
   const [roomId, setRoomId] = useState<string | null>(null);
@@ -50,33 +73,44 @@ export default function HomePage() {
   const peerRef = useRef<WebRTCPeer | null>(null);
   const senderStreamerRef = useRef<FileStreamSender | null>(null);
 
-  // Clean up WebRTC on unmount
+  // Handle PWA share target intake and install prompt
   useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("shared=true")) {
+      getAndClearSharedFiles().then((shared) => {
+        if (shared && shared.length > 0) {
+          setSelectedFiles((prev) => [...prev, ...shared]);
+          window.history.replaceState(null, "", "/");
+        }
+      });
+    }
+
+    initPwaInstallPrompt(() => {
+      setCanInstallPwa(true);
+    });
+
     return () => {
       signalingRef.current?.close();
       peerRef.current?.close();
     };
   }, []);
 
-  const generateRoomId = () => {
-    const num = Math.floor(100 + Math.random() * 900);
-    return `WARP-${num}`;
-  };
-
   const handleStartSending = async () => {
     if (selectedFiles.length === 0) return;
 
-    const newRoomId = generateRoomId();
+    // Generate high-entropy 8-character Base32 room code + 128-bit hash key
+    const newRoomId = generateShortRoomCode();
+    const secretKey = generateEphemeralKey();
     setRoomId(newRoomId);
 
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    setShareUrl(`${origin}/${newRoomId}`);
+    setShareUrl(`${origin}/${newRoomId}#k=${secretKey}`);
 
     // Prepare transfer queue
     const items: FileTransferItem[] = selectedFiles.map((file, idx) => ({
       id: `file-${idx}`,
       file,
       name: file.name,
+      relativePath: (file as any).relativePath || file.name,
       size: file.size,
       type: file.type || "application/octet-stream",
       progress: 0,
@@ -85,14 +119,39 @@ export default function HomePage() {
       status: "ready",
     }));
     setTransferItems(items);
+    setConnectedPeers([]);
 
-    // Initialize Signaling
+    // Initialize Signaling with multi-peer support
     const signaling = new SignalingClient(newRoomId, (envelope) => {
       if (envelope.type === "joined" && envelope.peerCount) {
         setPeerCount(envelope.peerCount);
       }
+      if (envelope.type === "knock") {
+        setPendingKnock({
+          peerId: envelope.peerId!,
+          deviceInfo: envelope.deviceInfo || "Mobile / Web Device",
+        });
+      }
+      if (envelope.type === "peer_approved") {
+        setConnectedPeers((prev) => [
+          ...prev.filter((p) => p.peerId !== envelope.peerId),
+          {
+            peerId: envelope.peerId!,
+            deviceInfo: envelope.deviceInfo || "Colleague",
+            joinedAt: Date.now(),
+            approved: true,
+            status: "connected",
+            progress: 0,
+            speedBps: 0,
+          },
+        ]);
+      }
       if (envelope.type === "peer_left") {
-        setPeerCount(1);
+        if (envelope.peerId) {
+          setConnectedPeers((prev) => prev.filter((p) => p.peerId !== envelope.peerId));
+        } else {
+          setPeerCount(1);
+        }
       }
       peerRef.current?.handleSignalingMessage(envelope);
     });
@@ -100,18 +159,29 @@ export default function HomePage() {
 
     try {
       await signaling.connect();
+      // Configure room capacity and knock-to-join gate
+      signaling.configureRoom(maxRecipients, requireApproval);
 
-      // Initialize WebRTC as initiator
+      // Initialize WebRTC as initiator (Star topology)
       const peer = new WebRTCPeer("initiator", signaling, {
-        onConnectionStateChange: (state) => {
-          console.log("[WebRTC] Connection state:", state);
+        onConnectionStateChange: (state, peerId) => {
+          console.log("[WebRTC Host] Peer state change:", peerId, state);
         },
-        onDataChannelReady: (channel) => {
-          console.log("[DataChannel] Ready! Starting stream...");
-          startStreamingFiles(channel, items);
+        onDataChannelReady: (channel, peerId) => {
+          console.log("[DataChannel] Ready for peer:", peerId);
+          if (!senderStreamerRef.current) {
+            const streamer = new FileStreamSender(channel);
+            senderStreamerRef.current = streamer;
+            startStreamingFiles(streamer, items);
+          } else {
+            senderStreamerRef.current.addChannel(channel);
+          }
         },
-        onError: (err) => {
-          console.error("[WebRTC] Peer error:", err);
+        onPeerDisconnected: (peerId) => {
+          setConnectedPeers((prev) => prev.filter((p) => p.peerId !== peerId));
+        },
+        onError: (err, peerId) => {
+          console.error("[WebRTC Host] Error on peer:", peerId, err);
         },
       });
       peerRef.current = peer;
@@ -121,58 +191,80 @@ export default function HomePage() {
     }
   };
 
-  const startStreamingFiles = async (channel: RTCDataChannel, items: FileTransferItem[]) => {
-    const streamer = new FileStreamSender(channel);
+  const handleApproveKnock = (peerId: string) => {
+    signalingRef.current?.approvePeer(peerId);
+    setPendingKnock(null);
+  };
+
+  const handleRejectKnock = (peerId: string) => {
+    signalingRef.current?.rejectPeer(peerId);
+    setPendingKnock(null);
+  };
+
+  const handleDisconnectPeer = (peerId: string) => {
+    peerRef.current?.disconnectPeer(peerId);
+    signalingRef.current?.rejectPeer(peerId);
+    setConnectedPeers((prev) => prev.filter((p) => p.peerId !== peerId));
+  };
+
+  const startStreamingFiles = async (streamer: FileStreamSender, items: FileTransferItem[]) => {
     senderStreamerRef.current = streamer;
 
-    for (let i = 0; i < items.length; i++) {
-      setActiveItemIndex(i);
-      const current = items[i];
-      if (!current.file) continue;
+    // Acquire screen wake lock to prevent mobile display sleep during transfer
+    await wakeLock.request();
 
-      // Update state to sending
-      setTransferItems((prev) =>
-        prev.map((item, idx) => (idx === i ? { ...item, status: "sending" } : item))
-      );
+    try {
+      for (let i = 0; i < items.length; i++) {
+        setActiveItemIndex(i);
+        const current = items[i];
+        if (!current.file) continue;
 
-      try {
-        const finalSha256 = await streamer.sendFile(current.file, (update) => {
+        // Update state to sending
+        setTransferItems((prev) =>
+          prev.map((item, idx) => (idx === i ? { ...item, status: "sending" } : item))
+        );
+
+        try {
+          const finalSha256 = await streamer.sendFile(current.file, (update) => {
+            setTransferItems((prev) =>
+              prev.map((item, idx) =>
+                idx === i
+                  ? {
+                      ...item,
+                      progress: update.progressPercent,
+                      speedBps: update.speedBps,
+                      etaSeconds: update.etaSeconds,
+                    }
+                  : item
+              )
+            );
+          });
+
+          // Mark completed
           setTransferItems((prev) =>
             prev.map((item, idx) =>
               idx === i
                 ? {
                     ...item,
-                    progress: update.progressPercent,
-                    speedBps: update.speedBps,
-                    etaSeconds: update.etaSeconds,
+                    status: "completed",
+                    progress: 100,
+                    sha256: finalSha256,
                   }
                 : item
             )
           );
-        });
-
-        // Mark completed
-        setTransferItems((prev) =>
-          prev.map((item, idx) =>
-            idx === i
-              ? {
-                  ...item,
-                  status: "completed",
-                  progress: 100,
-                  sha256: finalSha256,
-                }
-              : item
-          )
-        );
-      } catch (err: any) {
-        console.error("File stream failed:", err);
-        setTransferItems((prev) =>
-          prev.map((item, idx) =>
-            idx === i ? { ...item, status: "error", error: err?.message } : item
-          )
-        );
-        break;
+        } catch (err: any) {
+          console.error("File stream failed:", err);
+          setTransferItems((prev) =>
+            prev.map((item, idx) =>
+              idx === i ? { ...item, status: "error", error: err?.message } : item
+            )
+          );
+          break;
+        }
       }
+    } finally {
+      wakeLock.release();
     }
 
     // Trigger celebration confetti on all files completed
@@ -180,7 +272,8 @@ export default function HomePage() {
       confetti({
         particleCount: 80,
         spread: 70,
-        origin: { y: 0.6 },
+        origin: { y: 0.7 },
+        colors: ["#10b981", "#3b82f6", "#6366f1"],
       });
     } catch (_) {}
   };
@@ -245,13 +338,13 @@ export default function HomePage() {
         </p>
       </section>
 
-      {/* Main Mode Switcher (Send / Receive) */}
+      {/* Main Mode Switcher (Send / Receive / Radar) */}
       {!roomId && (
-        <div className="flex justify-center">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <div className="p-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 flex items-center gap-1 text-xs sm:text-sm font-medium">
             <button
               onClick={() => setActiveTab("send")}
-              className={`px-5 py-2 rounded-lg transition-all ${
+              className={`px-5 py-2 rounded-lg transition-all cursor-pointer ${
                 activeTab === "send"
                   ? "bg-white dark:bg-neutral-900 text-black dark:text-white shadow-xs font-semibold"
                   : "text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white"
@@ -261,7 +354,7 @@ export default function HomePage() {
             </button>
             <button
               onClick={() => setActiveTab("receive")}
-              className={`px-5 py-2 rounded-lg transition-all ${
+              className={`px-5 py-2 rounded-lg transition-all cursor-pointer ${
                 activeTab === "receive"
                   ? "bg-white dark:bg-neutral-900 text-black dark:text-white shadow-xs font-semibold"
                   : "text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white"
@@ -269,7 +362,32 @@ export default function HomePage() {
             >
               Receive Files
             </button>
+            <button
+              onClick={() => setActiveTab("radar")}
+              className={`px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === "radar"
+                  ? "bg-white dark:bg-neutral-900 text-black dark:text-white shadow-xs font-semibold"
+                  : "text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white"
+              }`}
+            >
+              <Radio className="w-3.5 h-3.5" />
+              <span>Wi-Fi Radar</span>
+            </button>
           </div>
+
+          {canInstallPwa && (
+            <button
+              type="button"
+              onClick={async () => {
+                const accepted = await promptPwaInstall();
+                if (accepted) setCanInstallPwa(false);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-xs font-medium text-neutral-700 dark:text-neutral-300 transition-colors shadow-2xs cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Install App</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -279,10 +397,34 @@ export default function HomePage() {
         {activeTab === "send" && !roomId && (
           <div className="space-y-6">
             <DropZone
-              onFilesSelected={(newFiles) =>
-                setSelectedFiles((prev) => [...prev, ...newFiles])
-              }
+              onFilesSelected={(newFiles) => {
+                setSizeLimitWarning(null);
+                const valid: File[] = [];
+                const oversized: string[] = [];
+                for (const f of newFiles) {
+                  if (f.size > MAX_FILE_SIZE_BYTES) {
+                    oversized.push(f.name);
+                  } else {
+                    valid.push(f);
+                  }
+                }
+                if (oversized.length > 0) {
+                  setSizeLimitWarning(
+                    `"${oversized.join('", "')}" exceeds the 5 GB limit for the free web version. (Self-host PeerWarp for unlimited file sizes).`
+                  );
+                }
+                if (valid.length > 0) {
+                  setSelectedFiles((prev) => [...prev, ...valid]);
+                }
+              }}
             />
+
+            {sizeLimitWarning && (
+              <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs sm:text-sm">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{sizeLimitWarning}</span>
+              </div>
+            )}
 
             {selectedFiles.length > 0 && (
               <div className="space-y-5">
@@ -293,6 +435,82 @@ export default function HomePage() {
                   }
                   onClearAll={() => setSelectedFiles([])}
                 />
+
+                {/* Group Sharing & Security Settings */}
+                <div className="p-5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-900/60 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                        <Users className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
+                        <span>Maximum Allowed Recipients</span>
+                      </div>
+                      <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                        How many colleagues can download simultaneously with this link.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
+                      <div className="flex items-center border border-neutral-300 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setMaxRecipients((prev) => Math.max(1, prev - 1))}
+                          className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg text-neutral-600 dark:text-neutral-300 transition-colors"
+                          title="Decrease"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-10 text-center font-mono font-bold text-sm text-neutral-900 dark:text-neutral-100">
+                          {maxRecipients}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setMaxRecipients((prev) => Math.min(20, prev + 1))}
+                          className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg text-neutral-600 dark:text-neutral-300 transition-colors"
+                          title="Increase"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Presets */}
+                      <div className="flex items-center gap-1">
+                        {[1, 3, 5, 10].map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            onClick={() => setMaxRecipients(preset)}
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-mono font-semibold transition-colors ${
+                              maxRecipients === preset
+                                ? "bg-black text-white dark:bg-white dark:text-black"
+                                : "bg-neutral-200/70 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300 dark:hover:bg-neutral-700"
+                            }`}
+                          >
+                            {preset}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Knock Gate Checkbox */}
+                  <label className="flex items-start gap-2.5 pt-3 border-t border-neutral-200/80 dark:border-neutral-800 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={requireApproval}
+                      onChange={(e) => setRequireApproval(e.target.checked)}
+                      className="mt-0.5 rounded border-neutral-300 dark:border-neutral-700 text-black focus:ring-black accent-black dark:accent-white"
+                    />
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>Knock-to-Join Gate (Human Verification)</span>
+                      </span>
+                      <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                        Shows an instant popup asking you to Accept/Decline whenever an unfamiliar device attempts to join.
+                      </p>
+                    </div>
+                  </label>
+                </div>
 
                 <div className="flex justify-center">
                   <button
@@ -311,6 +529,13 @@ export default function HomePage() {
         {/* ACTIVE SENDER SESSION */}
         {roomId && (
           <div className="space-y-6">
+            {/* Interactive Knock-to-Join Modal */}
+            <KnockApprovalModal
+              knock={pendingKnock}
+              onApprove={handleApproveKnock}
+              onReject={handleRejectKnock}
+            />
+
             <div className="flex items-center justify-between pb-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
                 Active Streaming Room
@@ -329,6 +554,14 @@ export default function HomePage() {
               roomId={roomId}
               shareUrl={shareUrl}
               peerCount={peerCount}
+              maxPeers={maxRecipients}
+            />
+
+            {/* Live Connected Recipients List */}
+            <ConnectedPeersList
+              peers={connectedPeers}
+              maxPeers={maxRecipients}
+              onDisconnectPeer={handleDisconnectPeer}
             />
 
             {/* Active Transfer Cards */}
@@ -386,6 +619,25 @@ export default function HomePage() {
               </button>
             </form>
           </div>
+        )}
+
+        {/* LOCAL RADAR TAB */}
+        {activeTab === "radar" && !roomId && (
+          <LocalRadar
+            hasFilesToSend={selectedFiles.length > 0}
+            onSendToPeer={async (targetPeerId) => {
+              if (selectedFiles.length === 0) {
+                setActiveTab("send");
+                return;
+              }
+              await handleStartSending();
+            }}
+            incomingInvite={radarInvite}
+            onAcceptInvite={(invRoomId, invKey) => {
+              window.location.href = `/${invRoomId}#k=${invKey}`;
+            }}
+            onDeclineInvite={() => setRadarInvite(null)}
+          />
         )}
       </div>
 
