@@ -13,7 +13,6 @@ const DEFAULT_STUN_CONFIG: RTCConfiguration = {
     { urls: "stun:stun1.l.google.com:19302" },
     { urls: "stun:stun.cloudflare.com:3478" },
     { urls: "stun:stun.services.mozilla.com:3478" },
-    { urls: "stun:turn.peerwarp.com:3478" },
   ],
   iceCandidatePoolSize: 10,
 };
@@ -71,6 +70,8 @@ interface PeerConnectionRecord {
   pc: RTCPeerConnection;
   dataChannel: RTCDataChannel | null;
   candidateQueue: RTCIceCandidateInit[];
+  turnFallbackTimer?: ReturnType<typeof setTimeout> | null;
+  hasUpgradedToTurn?: boolean;
 }
 
 export class WebRTCPeer {
@@ -80,6 +81,8 @@ export class WebRTCPeer {
   private singlePc: RTCPeerConnection | null = null;
   private singleChannel: RTCDataChannel | null = null;
   private singleCandidateQueue: RTCIceCandidateInit[] = [];
+  private singleTurnFallbackTimer: ReturnType<typeof setTimeout> | null = null;
+  private singleHasUpgradedToTurn: boolean = false;
 
   private signaling: SignalingClient;
   private role: PeerRole;
@@ -93,13 +96,26 @@ export class WebRTCPeer {
 
   public async initialize(): Promise<void> {
     if (this.role === "receiver") {
-      const config = await getDynamicRtcConfig(this.signaling.currentRoomId);
-      this.singlePc = new RTCPeerConnection(config);
+      this.singleHasUpgradedToTurn = false;
+      // Start connection with 100% free, anonymous public STUN (Zero TURN allocation)
+      this.singlePc = new RTCPeerConnection(DEFAULT_STUN_CONFIG);
       this.singleCandidateQueue = [];
 
       this.singlePc.onconnectionstatechange = () => {
         if (this.singlePc) {
-          this.events.onConnectionStateChange(this.singlePc.connectionState);
+          const state = this.singlePc.connectionState;
+          if (state === "connected") {
+            if (this.singleTurnFallbackTimer) {
+              clearTimeout(this.singleTurnFallbackTimer);
+              this.singleTurnFallbackTimer = null;
+            }
+            console.log("[WebRTC Receiver] Connected directly via public STUN (P2P). Zero TURN usage.");
+          } else if (state === "failed" || state === "disconnected") {
+            if (!this.singleHasUpgradedToTurn) {
+              this.requestTurnUpgradeFromHost();
+            }
+          }
+          this.events.onConnectionStateChange(state);
         }
       };
 
@@ -123,28 +139,54 @@ export class WebRTCPeer {
 
   /**
    * Initiator initiates a WebRTC connection with a newly approved recipient.
+   * Starts with fast public STUN; lazily upgrades to TURN relay only if direct P2P fails.
    */
   public async connectToRecipient(peerId: string): Promise<void> {
     if (this.role !== "initiator") return;
     if (this.peers.has(peerId)) {
-      this.peers.get(peerId)?.pc.close();
+      const existing = this.peers.get(peerId);
+      if (existing?.turnFallbackTimer) clearTimeout(existing.turnFallbackTimer);
+      existing?.pc.close();
       this.peers.delete(peerId);
     }
 
-    console.log(`[WebRTC Host] Establishing connection with recipient: ${peerId}`);
-    const config = await getDynamicRtcConfig(this.signaling.currentRoomId);
-    const pc = new RTCPeerConnection(config);
+    console.log(`[WebRTC Host] Establishing connection with recipient: ${peerId} (Fast STUN P2P)`);
+    // Start connection with 100% free, anonymous public STUN (Zero TURN allocation)
+    const pc = new RTCPeerConnection(DEFAULT_STUN_CONFIG);
     const candidateQueue: RTCIceCandidateInit[] = [];
 
     const record: PeerConnectionRecord = {
       pc,
       dataChannel: null,
       candidateQueue,
+      hasUpgradedToTurn: false,
+      turnFallbackTimer: null,
     };
     this.peers.set(peerId, record);
 
+    // Lazy TURN fallback timer: if direct P2P does not connect within 4 seconds, upgrade to TURN relay
+    record.turnFallbackTimer = setTimeout(() => {
+      if (pc.connectionState !== "connected" && !record.hasUpgradedToTurn) {
+        console.log(`[WebRTC Host] Direct P2P negotiation took >4s for ${peerId}, lazily activating TURN relay fallback...`);
+        this.upgradeToTurn(peerId);
+      }
+    }, 4000);
+
     pc.onconnectionstatechange = () => {
-      this.events.onConnectionStateChange(pc.connectionState, peerId);
+      const state = pc.connectionState;
+      if (state === "connected") {
+        if (record.turnFallbackTimer) {
+          clearTimeout(record.turnFallbackTimer);
+          record.turnFallbackTimer = null;
+        }
+        console.log(`[WebRTC Host] Direct P2P connected to ${peerId} via STUN. Zero TURN relay required.`);
+      } else if (state === "failed" || state === "disconnected") {
+        if (!record.hasUpgradedToTurn) {
+          console.log(`[WebRTC Host] Direct P2P connection ${state} for ${peerId}, activating TURN relay fallback...`);
+          this.upgradeToTurn(peerId);
+        }
+      }
+      this.events.onConnectionStateChange(state, peerId);
     };
 
     pc.onicecandidate = (event) => {
@@ -182,6 +224,20 @@ export class WebRTCPeer {
     try {
       // 1. Receiver logic: handling messages from the host
       if (this.role === "receiver" && this.singlePc) {
+        if (envelope.type === "turn_upgrade") {
+          console.log("[WebRTC Receiver] Received TURN upgrade request from host. Fetching TURN credentials...");
+          this.singleHasUpgradedToTurn = true;
+          try {
+            const dynamicConfig = await getDynamicRtcConfig(this.signaling.currentRoomId);
+            if (this.singlePc && typeof this.singlePc.setConfiguration === "function") {
+              this.singlePc.setConfiguration(dynamicConfig);
+            }
+          } catch (err) {
+            console.warn("[WebRTC Receiver] Failed to set dynamic TURN config on receiver:", err);
+          }
+          return;
+        }
+
         if (envelope.type === "offer") {
           console.log("[WebRTC Receiver] Handling SDP offer from host");
           await this.singlePc.setRemoteDescription(new RTCSessionDescription(envelope.payload));
@@ -210,6 +266,12 @@ export class WebRTCPeer {
       if (this.role === "initiator") {
         const fromPeerId = envelope.from || envelope.peerId;
         if (!fromPeerId) return;
+
+        if (envelope.type === "turn_upgrade") {
+          console.log(`[WebRTC Host] Received TURN upgrade request from recipient ${fromPeerId}`);
+          await this.upgradeToTurn(fromPeerId);
+          return;
+        }
 
         if (envelope.type === "peer_approved") {
           await this.connectToRecipient(fromPeerId);
@@ -242,6 +304,10 @@ export class WebRTCPeer {
   public disconnectPeer(peerId: string): void {
     const record = this.peers.get(peerId);
     if (record) {
+      if (record.turnFallbackTimer) {
+        clearTimeout(record.turnFallbackTimer);
+        record.turnFallbackTimer = null;
+      }
       if (record.dataChannel) {
         try { record.dataChannel.close(); } catch (_) {}
       }
@@ -388,7 +454,73 @@ export class WebRTCPeer {
     }
   }
 
+  /**
+   * Lazily upgrades a specific peer connection to use private TURN relay credentials
+   * when direct P2P connection via STUN fails or times out.
+   */
+  private async upgradeToTurn(peerId: string): Promise<void> {
+    const record = this.peers.get(peerId);
+    if (!record || record.hasUpgradedToTurn || record.pc.connectionState === "connected") {
+      return;
+    }
+    record.hasUpgradedToTurn = true;
+    if (record.turnFallbackTimer) {
+      clearTimeout(record.turnFallbackTimer);
+      record.turnFallbackTimer = null;
+    }
+
+    try {
+      console.log(`[WebRTC Host] Fetching dynamic TURN configuration for fallback on peer ${peerId}...`);
+      const dynamicConfig = await getDynamicRtcConfig(this.signaling.currentRoomId);
+
+      if (typeof record.pc.setConfiguration === "function") {
+        record.pc.setConfiguration(dynamicConfig);
+      }
+
+      // Instruct the recipient to also fetch and configure TURN relay
+      this.signaling.send({
+        type: "turn_upgrade",
+        to: peerId,
+      });
+
+      // Trigger WebRTC ICE restart with new TURN relay candidates
+      if (typeof (record.pc as any).restartIce === "function") {
+        (record.pc as any).restartIce();
+      }
+      const offer = await record.pc.createOffer({ iceRestart: true });
+      await record.pc.setLocalDescription(offer);
+
+      this.signaling.send({
+        type: "offer",
+        to: peerId,
+        payload: { sdp: offer.sdp, type: offer.type },
+      });
+      console.log(`[WebRTC Host] Sent TURN-upgraded ICE restart offer to ${peerId}`);
+    } catch (err) {
+      console.error(`[WebRTC Host] Failed to upgrade peer ${peerId} to TURN relay:`, err);
+    }
+  }
+
+  /**
+   * Receiver requests host to upgrade to TURN relay when direct P2P fails.
+   */
+  private requestTurnUpgradeFromHost(): void {
+    if (this.singleHasUpgradedToTurn || (this.singlePc && this.singlePc.connectionState === "connected")) {
+      return;
+    }
+    this.singleHasUpgradedToTurn = true;
+    console.log("[WebRTC Receiver] Requesting host to initiate TURN upgrade...");
+    this.signaling.send({
+      type: "turn_upgrade",
+      to: "host",
+    });
+  }
+
   public close(): void {
+    if (this.singleTurnFallbackTimer) {
+      clearTimeout(this.singleTurnFallbackTimer);
+      this.singleTurnFallbackTimer = null;
+    }
     if (this.singleChannel) {
       this.singleChannel.close();
       this.singleChannel = null;
@@ -398,6 +530,10 @@ export class WebRTCPeer {
       this.singlePc = null;
     }
     for (const record of this.peers.values()) {
+      if (record.turnFallbackTimer) {
+        clearTimeout(record.turnFallbackTimer);
+        record.turnFallbackTimer = null;
+      }
       if (record.dataChannel) record.dataChannel.close();
       record.pc.close();
     }

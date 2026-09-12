@@ -25,7 +25,8 @@ export type SignalingMessageType =
   | "radar_peers"
   | "radar_invite"
   | "radar_accept"
-  | "radar_reject";
+  | "radar_reject"
+  | "turn_upgrade";
 
 export interface SignalingEnvelope {
   type: SignalingMessageType;
