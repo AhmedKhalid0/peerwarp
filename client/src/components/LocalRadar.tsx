@@ -40,6 +40,13 @@ export function LocalRadar({
   const [radarPeers, setRadarPeers] = useState<RadarPeer[]>([]);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [connectingPeerId, setConnectingPeerId] = useState<string | null>(null);
+  const [localInvite, setLocalInvite] = useState<{
+    from: string;
+    deviceInfo: string;
+    roomId: string;
+    secretKey: string;
+    fileName?: string;
+  } | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -71,6 +78,8 @@ export function LocalRadar({
             const data = JSON.parse(event.data);
             if (data.type === "radar_peers" && Array.isArray(data.radarPeers)) {
               setRadarPeers(data.radarPeers);
+            } else if (data.type === "radar_invite") {
+              setLocalInvite(data);
             }
           } catch (_) {}
         };
@@ -104,10 +113,12 @@ export function LocalRadar({
     return <Laptop className="w-5 h-5 text-neutral-700 dark:text-neutral-300" />;
   };
 
+  const effectiveInvite = localInvite || incomingInvite;
+
   return (
     <div className="space-y-6">
       {/* Incoming Invite Alert Modal/Card */}
-      {incomingInvite && (
+      {effectiveInvite && (
         <div className="rounded-2xl border-2 border-black dark:border-white bg-white dark:bg-neutral-900 p-6 shadow-md animate-in fade-in zoom-in-95">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center shrink-0">
@@ -118,7 +129,7 @@ export function LocalRadar({
                 Incoming Transfer Invite
               </span>
               <h4 className="text-base font-semibold text-neutral-900 dark:text-neutral-100 mt-0.5">
-                {incomingInvite.deviceInfo}
+                {effectiveInvite.deviceInfo}
               </h4>
               <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
                 Wants to stream files directly to your device via end-to-end encrypted WebRTC.
@@ -126,7 +137,7 @@ export function LocalRadar({
               <div className="flex items-center gap-3 mt-4">
                 <button
                   type="button"
-                  onClick={() => onAcceptInvite(incomingInvite.roomId, incomingInvite.secretKey)}
+                  onClick={() => onAcceptInvite(effectiveInvite.roomId, effectiveInvite.secretKey)}
                   className="px-4 py-2 rounded-xl bg-black hover:bg-neutral-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-black text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4" />
@@ -134,7 +145,10 @@ export function LocalRadar({
                 </button>
                 <button
                   type="button"
-                  onClick={onDeclineInvite}
+                  onClick={() => {
+                    setLocalInvite(null);
+                    onDeclineInvite?.();
+                  }}
                   className="px-4 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-semibold transition-colors cursor-pointer"
                 >
                   Decline
